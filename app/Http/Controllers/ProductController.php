@@ -175,9 +175,18 @@ class ProductController extends Controller
                 'store_id' => $storeId,
                 'quantity' => $stockQty,
             ]);
+        } else {
+            // Super admin without store: create stock for all active stores
+            \App\Models\Store::where('status', 'active')->each(function ($store) use ($product, $stockQty) {
+                StockProduct::create([
+                    'product_id' => $product->id,
+                    'store_id' => $store->id,
+                    'quantity' => $stockQty,
+                ]);
+            });
         }
 
-        return back();
+        return back()->with('success', 'Produk "'.$product->name.'" berhasil ditambahkan.');
     }
 
     public function update(Request $request, Product $product)
