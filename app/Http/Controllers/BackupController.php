@@ -228,6 +228,10 @@ class BackupController extends Controller
 
     protected function mysqlDump(): ?string
     {
+        if (! function_exists('exec')) {
+            return null;
+        }
+
         $host = config('database.connections.mysql.host');
         $port = config('database.connections.mysql.port');
         $db = config('database.connections.mysql.database');
