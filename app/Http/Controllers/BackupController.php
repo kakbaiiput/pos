@@ -90,21 +90,28 @@ class BackupController extends Controller
 
             $fullFilename = $filename.$ext;
 
+            $s3Configured = config('filesystems.disks.s3.key') && config('filesystems.disks.s3.secret');
+
             $record = Backup::create([
                 'filename' => $fullFilename,
                 'disk' => 'local',
                 'path' => 'backups/'.$fullFilename,
                 'size' => filesize($dest),
                 'checksum' => hash_file('sha256', $dest),
-                'status' => 'pending',
-                'notes' => 'Dibuat manual',
+                'status' => $s3Configured ? 'pending' : 'local',
+                'notes' => $s3Configured ? 'Dibuat manual' : 'Dibuat manual (cloud tidak dikonfigurasi)',
             ]);
 
-            SyncBackupToCloud::dispatch($record->id);
+            if ($s3Configured) {
+                SyncBackupToCloud::dispatch($record->id);
+                $msg = 'Backup berhasil dibuat ('.number_format(filesize($dest) / 1024, 1).' KB). Sinkronisasi cloud sedang diproses.';
+            } else {
+                $msg = 'Backup berhasil dibuat ('.number_format(filesize($dest) / 1024, 1).' KB).';
+            }
 
             Log::info('Database backup created: '.$fullFilename);
 
-            return redirect('/backup')->with('success', 'Backup database berhasil dibuat ('.number_format(filesize($dest) / 1024, 1).' KB). Sinkronisasi cloud sedang diproses.');
+            return redirect('/backup')->with('success', $msg);
         } catch (\Exception $e) {
             Log::error('Backup failed: '.$e->getMessage());
 
