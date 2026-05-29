@@ -243,7 +243,7 @@
                 Swal.fire({
                     icon: 'success',
                     title: 'Berhasil',
-                    text: '{{ session('success') }}',
+                    text: {!! json_encode(session('success')) !!},
                     confirmButtonColor: '#3085d6',
                     timer: 3000,
                     timerProgressBar: true
@@ -254,7 +254,7 @@
                 Swal.fire({
                     icon: 'error',
                     title: 'Gagal',
-                    text: '{{ session('error') }}',
+                    text: {!! json_encode(session('error')) !!},
                     confirmButtonColor: '#3085d6',
                     timer: 4000,
                     timerProgressBar: true
@@ -265,7 +265,7 @@
                 Swal.fire({
                     icon: 'warning',
                     title: 'Peringatan',
-                    text: '{{ session('warning') }}',
+                    text: {!! json_encode(session('warning')) !!},
                     confirmButtonColor: '#3085d6',
                     timer: 4000,
                     timerProgressBar: true
@@ -276,7 +276,7 @@
                 Swal.fire({
                     icon: 'info',
                     title: 'Info',
-                    text: '{{ session('info') }}',
+                    text: {!! json_encode(session('info')) !!},
                     confirmButtonColor: '#3085d6',
                     timer: 3000,
                     timerProgressBar: true
