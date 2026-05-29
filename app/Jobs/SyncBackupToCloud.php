@@ -27,6 +27,12 @@ class SyncBackupToCloud implements ShouldQueue
         }
 
         try {
+            if (! class_exists(\League\Flysystem\AwsS3V3\PortableVisibilityConverter::class)) {
+                $backup->update(['status' => 'failed', 'notes' => 'Package S3 tidak terinstall (league/flysystem-aws-s3-v3)']);
+
+                return;
+            }
+
             $localPath = storage_path('app/'.$backup->path);
 
             if (! file_exists($localPath)) {
