@@ -10,6 +10,10 @@ class VouchersSeeder extends Seeder
 {
     public function run(): void
     {
+        if (Voucher::exists()) {
+            return;
+        }
+
         $histories = History::all();
         $firstHistory = $histories->first();
         $lastHistory = $histories->last();

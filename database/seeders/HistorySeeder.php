@@ -14,6 +14,10 @@ class HistorySeeder extends Seeder
 {
     public function run(): void
     {
+        if (History::exists()) {
+            return;
+        }
+
         $stores = Store::where('status', 'active')->get();
         $cashiers = User::where('role', 'kasir')->get();
         $products = Product::all()->keyBy('name');
