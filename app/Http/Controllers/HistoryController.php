@@ -96,9 +96,11 @@ class HistoryController extends Controller
         $otp = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
 
         // Set OTP on the history record with 10 minutes expiry
+        $expiresAt = now()->addMinutes(10);
+
         $history->update([
             'void_otp' => $otp,
-            'void_otp_expires_at' => now()->addMinutes(10),
+            'void_otp_expires_at' => $expiresAt,
             'void_otp_admin_id' => $admin->id,
         ]);
 
@@ -106,7 +108,7 @@ class HistoryController extends Controller
             'success' => true,
             'otp' => $otp,
             'admin_name' => $admin->name,
-            'expires_at' => $history->void_otp_expires_at->format('H:i:s'),
+            'expires_at' => $expiresAt->format('H:i:s'),
             'invoice_id' => $history->invoice_id,
             'message' => 'OTP berhasil digenerate untuk '.$admin->name,
         ]);
