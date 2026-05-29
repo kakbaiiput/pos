@@ -351,12 +351,14 @@
               </select>
             </div>
           </div>
+          <!-- Hidden inputs for actual form submission (avoid "not focusable" error on hidden fields) -->
+          <input type="hidden" name="profit_percentage" id="hiddenProfitPercent" value="0">
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1.5" id="wrapProfitPercent">
               <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Profit (%)</label>
               <div class="relative">
                 <span class="absolute left-3 inset-y-0 flex items-center text-on-surface-variant text-xs font-semibold">%</span>
-                <input name="profit_percentage" id="inputProfitPercent" value="0"
+                <input id="inputProfitPercent" value="0"
                   class="w-full bg-surface-container-low border-none rounded-lg py-2 pl-7 pr-2 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                   placeholder="0" type="number" min="0" oninput="onProfitPercentChange()" />
               </div>
@@ -379,6 +381,13 @@
                   placeholder="0" type="number" min="0" oninput="onSellingPriceChange()" readonly />
               </div>
             </div>
+          </div>
+          <div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg">
+            <input type="checkbox" name="include_tax" id="inputIncludeTax" value="1"
+              class="w-4 h-4 text-primary rounded focus:ring-primary/20" onchange="recalcAddPrice()">
+            <label for="inputIncludeTax" class="text-sm text-on-surface-variant">
+              Include Pajak (<span id="vatRateDisplay">11</span>%)
+            </label>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1.5">
@@ -522,12 +531,20 @@
     function recalcAddPrice() {
         const mode = document.getElementById('inputPriceMode').value;
         const cost = parseFloat(document.getElementById('inputCostPrice').value) || 0;
+        const includeTax = document.getElementById('inputIncludeTax') && document.getElementById('inputIncludeTax').checked;
+        const taxMult = includeTax ? (1 + vatRate / 100) : 1;
+
         if (mode === 'percent') {
             const pct = parseFloat(document.getElementById('inputProfitPercent').value) || 0;
-            document.getElementById('inputSellingPrice').value = Math.ceil(cost * (1 + pct / 100) / 100) * 100 || 0;
+            const raw = cost * (1 + pct / 100) * taxMult;
+            document.getElementById('inputSellingPrice').value = Math.ceil(raw / 100) * 100 || 0;
+            document.getElementById('hiddenProfitPercent').value = pct;
         } else if (mode === 'nominal') {
             const nominal = parseFloat(document.getElementById('inputProfitNominal').value) || 0;
-            document.getElementById('inputSellingPrice').value = Math.ceil((cost + nominal) / 100) * 100 || 0;
+            const raw = (cost + nominal) * taxMult;
+            const selling = Math.ceil(raw / 100) * 100 || 0;
+            document.getElementById('inputSellingPrice').value = selling;
+            document.getElementById('hiddenProfitPercent').value = cost > 0 ? Math.round(((selling - cost) / cost) * 10000) / 100 : 0;
         }
     }
 
@@ -539,7 +556,9 @@
         const cost = parseFloat(document.getElementById('inputCostPrice').value) || 0;
         const selling = parseFloat(document.getElementById('inputSellingPrice').value) || 0;
         if (cost > 0 && selling >= cost) {
-            document.getElementById('inputProfitPercent').value = Math.round(((selling - cost) / cost) * 10000) / 100;
+            const pct = Math.round(((selling - cost) / cost) * 10000) / 100;
+            document.getElementById('inputProfitPercent').value = pct;
+            document.getElementById('hiddenProfitPercent').value = pct;
         }
     }
 
@@ -716,12 +735,14 @@
               </select>
             </div>
           </div>
+          <!-- Hidden input for actual submission -->
+          <input type="hidden" name="profit_percentage" id="editHiddenProfitPercent" value="0">
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1.5" id="editWrapProfitPercent">
               <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Profit (%)</label>
               <div class="relative">
                 <span class="absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs">%</span>
-                <input name="profit_percentage" id="editProfitPercent" value="0"
+                <input id="editProfitPercent" value="0"
                   class="w-full bg-surface-container-low border-none rounded-lg py-2 pl-7 pr-2 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                   type="number" min="0" oninput="onEditProfitPercentChange()" />
               </div>
@@ -744,6 +765,13 @@
                   type="number" readonly oninput="onEditSellingPriceChange()" />
               </div>
             </div>
+          </div>
+          <div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg">
+            <input type="checkbox" name="include_tax" id="editIncludeTax" value="1"
+              class="w-4 h-4 text-primary rounded focus:ring-primary/20" onchange="recalcEditPrice()">
+            <label for="editIncludeTax" class="text-sm text-on-surface-variant">
+              Include Pajak (<span class="editVatRate">{{ \App\Models\StoreSetting::getVal('vat', auth()->user()->store_id, '11') }}</span>%)
+            </label>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
@@ -817,7 +845,9 @@
       document.getElementById('editSupplierId').value = supplierId;
       document.getElementById('editUnit').value = unit;
 
-      // Determine mode: if profitPercent > 0 → percent mode, else manual (keep existing selling price)
+      document.getElementById('editIncludeTax').checked = taxIncluded == 1;
+
+      // Determine mode: if profitPercent > 0 → percent mode, else manual
       if (profitPercent > 0) {
         document.getElementById('editPriceMode').value = 'percent';
         onEditPriceModeChange();
@@ -863,12 +893,20 @@
     function recalcEditPrice() {
         const mode = document.getElementById('editPriceMode').value;
         const cost = parseFloat(document.getElementById('editCostPrice').value) || 0;
+        const includeTax = document.getElementById('editIncludeTax') && document.getElementById('editIncludeTax').checked;
+        const taxMult = includeTax ? (1 + vatRate / 100) : 1;
+
         if (mode === 'percent') {
             const pct = parseFloat(document.getElementById('editProfitPercent').value) || 0;
-            document.getElementById('editSellingPrice').value = Math.ceil(cost * (1 + pct / 100) / 100) * 100 || 0;
+            const raw = cost * (1 + pct / 100) * taxMult;
+            document.getElementById('editSellingPrice').value = Math.ceil(raw / 100) * 100 || 0;
+            document.getElementById('editHiddenProfitPercent').value = pct;
         } else if (mode === 'nominal') {
             const nominal = parseFloat(document.getElementById('editProfitNominal').value) || 0;
-            document.getElementById('editSellingPrice').value = Math.ceil((cost + nominal) / 100) * 100 || 0;
+            const raw = (cost + nominal) * taxMult;
+            const selling = Math.ceil(raw / 100) * 100 || 0;
+            document.getElementById('editSellingPrice').value = selling;
+            document.getElementById('editHiddenProfitPercent').value = cost > 0 ? Math.round(((selling - cost) / cost) * 10000) / 100 : 0;
         }
     }
 
@@ -880,7 +918,9 @@
         const cost = parseFloat(document.getElementById('editCostPrice').value) || 0;
         const selling = parseFloat(document.getElementById('editSellingPrice').value) || 0;
         if (cost > 0 && selling >= cost) {
-            document.getElementById('editProfitPercent').value = Math.round(((selling - cost) / cost) * 10000) / 100;
+            const pct = Math.round(((selling - cost) / cost) * 10000) / 100;
+            document.getElementById('editProfitPercent').value = pct;
+            document.getElementById('editHiddenProfitPercent').value = pct;
         }
     }
     
