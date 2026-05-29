@@ -360,7 +360,7 @@
                 <span class="absolute left-3 inset-y-0 flex items-center text-on-surface-variant text-xs font-semibold">%</span>
                 <input id="inputProfitPercent" value="0"
                   class="w-full bg-surface-container-low border-none rounded-lg py-2 pl-7 pr-2 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-                  placeholder="0" type="number" min="0" oninput="onProfitPercentChange()" />
+                  placeholder="0" type="number" oninput="onProfitPercentChange()" />
               </div>
             </div>
             <div class="space-y-1.5 hidden" id="wrapProfitNominal">
@@ -369,7 +369,7 @@
                 <span class="absolute left-3 inset-y-0 flex items-center text-on-surface-variant text-xs font-semibold">Rp</span>
                 <input id="inputProfitNominal" value="0"
                   class="w-full bg-surface-container-low border-none rounded-lg py-2 pl-7 pr-2 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-                  placeholder="0" type="number" min="0" oninput="onProfitNominalChange()" />
+                  placeholder="0" type="number" oninput="onProfitNominalChange()" />
               </div>
             </div>
             <div class="space-y-1.5">
@@ -744,7 +744,7 @@
                 <span class="absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs">%</span>
                 <input id="editProfitPercent" value="0"
                   class="w-full bg-surface-container-low border-none rounded-lg py-2 pl-7 pr-2 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-                  type="number" min="0" oninput="onEditProfitPercentChange()" />
+                  type="number" oninput="onEditProfitPercentChange()" />
               </div>
             </div>
             <div class="space-y-1.5 hidden" id="editWrapProfitNominal">
@@ -753,7 +753,7 @@
                 <span class="absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs">Rp</span>
                 <input id="editProfitNominal" value="0"
                   class="w-full bg-surface-container-low border-none rounded-lg py-2 pl-7 pr-2 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-                  type="number" min="0" oninput="onEditProfitNominalChange()" />
+                  type="number" oninput="onEditProfitNominalChange()" />
               </div>
             </div>
             <div class="space-y-1.5">
