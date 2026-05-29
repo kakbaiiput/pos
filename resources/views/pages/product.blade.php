@@ -338,34 +338,46 @@
                 <span class="absolute left-3 inset-y-0 flex items-center text-on-surface-variant text-xs font-semibold">Rp</span>
                 <input name="cost_price" id="inputCostPrice" required
                   class="w-full bg-surface-container-low border-none rounded-lg py-2 pl-7 pr-2 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-                  placeholder="0" type="number" min="0" oninput="calculateSellingPrice()" />
+                  placeholder="0" type="number" min="0" oninput="onCostPriceChange()" />
               </div>
             </div>
             <div class="space-y-1.5">
+              <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Mode Harga</label>
+              <select id="inputPriceMode" onchange="onPriceModeChange()"
+                class="w-full bg-surface-container-low border-none rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none appearance-none">
+                <option value="percent">% Profit</option>
+                <option value="nominal">Nominal Profit (Rp)</option>
+                <option value="manual">Isi Harga Jual Manual</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-1.5" id="wrapProfitPercent">
               <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Profit (%)</label>
               <div class="relative">
                 <span class="absolute left-3 inset-y-0 flex items-center text-on-surface-variant text-xs font-semibold">%</span>
                 <input name="profit_percentage" id="inputProfitPercent" value="0"
                   class="w-full bg-surface-container-low border-none rounded-lg py-2 pl-7 pr-2 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-                  placeholder="0" type="number" min="0" max="100" oninput="calculateSellingPrice()" />
+                  placeholder="0" type="number" min="0" oninput="onProfitPercentChange()" />
               </div>
             </div>
-          </div>
-          <div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg">
-            <input type="checkbox" name="include_tax" id="inputIncludeTax" value="1"
-              class="w-4 h-4 text-primary rounded focus:ring-primary/20" onchange="calculateSellingPrice()">
-            <label for="inputIncludeTax" class="text-sm text-on-surface-variant">
-              Include Pajak (<span id="vatRateDisplay">11</span>%)
-            </label>
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Harga Jual (Auto Calculate)</label>
-            <div class="relative">
-              <span class="absolute left-4 inset-y-0 flex items-center text-on-surface-variant text-sm font-semibold">Rp</span>
-              <input name="selling_price" id="inputSellingPrice"
-                class="w-full bg-primary/10 border-none rounded-lg py-2.5 pl-10 pr-4 text-sm font-bold text-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-                placeholder="0" type="number" min="0" />
-              <span class="absolute right-3 text-xs text-slate-400">Auto</span>
+            <div class="space-y-1.5 hidden" id="wrapProfitNominal">
+              <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Nominal Profit (Rp)</label>
+              <div class="relative">
+                <span class="absolute left-3 inset-y-0 flex items-center text-on-surface-variant text-xs font-semibold">Rp</span>
+                <input id="inputProfitNominal" value="0"
+                  class="w-full bg-surface-container-low border-none rounded-lg py-2 pl-7 pr-2 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                  placeholder="0" type="number" min="0" oninput="onProfitNominalChange()" />
+              </div>
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant" id="labelSellingPrice">Harga Jual (Auto)</label>
+              <div class="relative">
+                <span class="absolute left-4 inset-y-0 flex items-center text-on-surface-variant text-sm font-semibold">Rp</span>
+                <input name="selling_price" id="inputSellingPrice"
+                  class="w-full bg-primary/10 border-none rounded-lg py-2 pl-10 pr-4 text-sm font-bold text-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                  placeholder="0" type="number" min="0" oninput="onSellingPriceChange()" readonly />
+              </div>
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
@@ -475,7 +487,61 @@
     let rawMaterials = [];
     const vatRate = {{ \App\Models\StoreSetting::getVal('vat', auth()->user()->store_id, '11') }};
 
-    document.getElementById('vatRateDisplay').textContent = vatRate;
+    // ——— Add Product: 3-mode pricing ———
+    function onPriceModeChange() {
+        const mode = document.getElementById('inputPriceMode').value;
+        const wrapPercent = document.getElementById('wrapProfitPercent');
+        const wrapNominal = document.getElementById('wrapProfitNominal');
+        const sellingInput = document.getElementById('inputSellingPrice');
+        const label = document.getElementById('labelSellingPrice');
+
+        wrapPercent.classList.add('hidden');
+        wrapNominal.classList.add('hidden');
+
+        if (mode === 'percent') {
+            wrapPercent.classList.remove('hidden');
+            sellingInput.readOnly = true;
+            sellingInput.classList.add('bg-primary/10', 'text-primary', 'font-bold');
+            sellingInput.classList.remove('bg-surface-container-low');
+            label.textContent = 'Harga Jual (Auto)';
+        } else if (mode === 'nominal') {
+            wrapNominal.classList.remove('hidden');
+            sellingInput.readOnly = true;
+            sellingInput.classList.add('bg-primary/10', 'text-primary', 'font-bold');
+            sellingInput.classList.remove('bg-surface-container-low');
+            label.textContent = 'Harga Jual (Auto)';
+        } else {
+            sellingInput.readOnly = false;
+            sellingInput.classList.remove('bg-primary/10', 'text-primary', 'font-bold');
+            sellingInput.classList.add('bg-surface-container-low');
+            label.textContent = 'Harga Jual';
+        }
+        recalcAddPrice();
+    }
+
+    function recalcAddPrice() {
+        const mode = document.getElementById('inputPriceMode').value;
+        const cost = parseFloat(document.getElementById('inputCostPrice').value) || 0;
+        if (mode === 'percent') {
+            const pct = parseFloat(document.getElementById('inputProfitPercent').value) || 0;
+            document.getElementById('inputSellingPrice').value = Math.ceil(cost * (1 + pct / 100) / 100) * 100 || 0;
+        } else if (mode === 'nominal') {
+            const nominal = parseFloat(document.getElementById('inputProfitNominal').value) || 0;
+            document.getElementById('inputSellingPrice').value = Math.ceil((cost + nominal) / 100) * 100 || 0;
+        }
+    }
+
+    function onCostPriceChange() { recalcAddPrice(); }
+    function onProfitPercentChange() { recalcAddPrice(); }
+    function onProfitNominalChange() { recalcAddPrice(); }
+
+    function onSellingPriceChange() {
+        const cost = parseFloat(document.getElementById('inputCostPrice').value) || 0;
+        const selling = parseFloat(document.getElementById('inputSellingPrice').value) || 0;
+        if (cost > 0 && selling >= cost) {
+            document.getElementById('inputProfitPercent').value = Math.round(((selling - cost) / cost) * 10000) / 100;
+        }
+    }
 
     function confirmDeleteProduct(productId, productName) {
         Swal.fire({
@@ -497,22 +563,6 @@
                 }
             }
         });
-    }
-
-    function calculateSellingPrice() {
-        const costPrice = parseFloat(document.getElementById('inputCostPrice').value) || 0;
-        const profitPercent = parseFloat(document.getElementById('inputProfitPercent').value) || 0;
-        const includeTax = document.getElementById('inputIncludeTax').checked;
-
-        const profitAmount = costPrice * (profitPercent / 100);
-        const subtotal = costPrice + profitAmount;
-        const taxAmount = includeTax ? (subtotal * vatRate / 100) : 0;
-        const rawPrice = subtotal + taxAmount;
-
-        // Round to nearest 100 (ceil)
-        const sellingPrice = Math.ceil(rawPrice / 100) * 100;
-
-        document.getElementById('inputSellingPrice').value = sellingPrice;
     }
 
     function openRecipeModal(productId, productName) {
@@ -653,34 +703,46 @@
                 <span class="absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs">Rp</span>
                 <input name="cost_price" id="editCostPrice" required
                   class="w-full bg-surface-container-low border-none rounded-lg py-2 pl-7 pr-2 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-                  type="number" oninput="calculateEditSellingPrice()" />
+                  type="number" oninput="onEditCostPriceChange()" />
               </div>
             </div>
             <div class="space-y-1.5">
+              <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Mode Harga</label>
+              <select id="editPriceMode" onchange="onEditPriceModeChange()"
+                class="w-full bg-surface-container-low border-none rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none appearance-none">
+                <option value="percent">% Profit</option>
+                <option value="nominal">Nominal Profit (Rp)</option>
+                <option value="manual">Isi Harga Jual Manual</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-1.5" id="editWrapProfitPercent">
               <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Profit (%)</label>
               <div class="relative">
                 <span class="absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs">%</span>
                 <input name="profit_percentage" id="editProfitPercent" value="0"
                   class="w-full bg-surface-container-low border-none rounded-lg py-2 pl-7 pr-2 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-                  type="number" min="0" max="100" oninput="calculateEditSellingPrice()" />
+                  type="number" min="0" oninput="onEditProfitPercentChange()" />
               </div>
             </div>
-          </div>
-          <div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg">
-            <input type="checkbox" name="include_tax" id="editIncludeTax" value="1"
-              class="w-4 h-4 text-primary rounded focus:ring-primary/20" onchange="calculateEditSellingPrice()">
-            <label for="editIncludeTax" class="text-sm text-on-surface-variant">
-              Include Pajak (<span class="editVatRate">11</span>%)
-            </label>
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Harga Jual (Auto Calculate)</label>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">Rp</span>
-              <input name="selling_price" id="editSellingPrice"
-                class="w-full bg-primary/10 border-none rounded-lg py-2.5 pl-8 pr-4 text-sm font-bold text-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-                type="number" />
-              <span class="absolute right-3 text-xs text-slate-400">Auto</span>
+            <div class="space-y-1.5 hidden" id="editWrapProfitNominal">
+              <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Nominal Profit (Rp)</label>
+              <div class="relative">
+                <span class="absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs">Rp</span>
+                <input id="editProfitNominal" value="0"
+                  class="w-full bg-surface-container-low border-none rounded-lg py-2 pl-7 pr-2 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                  type="number" min="0" oninput="onEditProfitNominalChange()" />
+              </div>
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant" id="editLabelSellingPrice">Harga Jual (Auto)</label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">Rp</span>
+                <input name="selling_price" id="editSellingPrice"
+                  class="w-full bg-primary/10 border-none rounded-lg py-2.5 pl-8 pr-4 text-sm font-bold text-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                  type="number" readonly oninput="onEditSellingPriceChange()" />
+              </div>
             </div>
           </div>
 
@@ -744,10 +806,8 @@
       document.getElementById('editProductId').value = id;
       document.getElementById('editProductName').value = name;
       document.getElementById('editBarcode').value = barcode;
-      document.getElementById('editSellingPrice').value = sellingPrice;
       document.getElementById('editCostPrice').value = costPrice;
       document.getElementById('editProfitPercent').value = profitPercent;
-      document.getElementById('editIncludeTax').checked = taxIncluded == 1;
       document.getElementById('editStock').value = stock;
       document.getElementById('editThreshold').value = threshold;
       document.getElementById('editPromoPrice').value = promoPrice && promoPrice !== 'null' ? promoPrice : '';
@@ -756,22 +816,72 @@
       document.getElementById('editCategoryId').value = categoryId;
       document.getElementById('editSupplierId').value = supplierId;
       document.getElementById('editUnit').value = unit;
+
+      // Determine mode: if profitPercent > 0 → percent mode, else manual (keep existing selling price)
+      if (profitPercent > 0) {
+        document.getElementById('editPriceMode').value = 'percent';
+        onEditPriceModeChange();
+      } else {
+        document.getElementById('editPriceMode').value = 'manual';
+        onEditPriceModeChange();
+        document.getElementById('editSellingPrice').value = sellingPrice;
+      }
     }
 
-    function calculateEditSellingPrice() {
-        const costPrice = parseFloat(document.getElementById('editCostPrice').value) || 0;
-        const profitPercent = parseFloat(document.getElementById('editProfitPercent').value) || 0;
-        const includeTax = document.getElementById('editIncludeTax').checked;
+    // ——— Edit Product: 3-mode pricing ———
+    function onEditPriceModeChange() {
+        const mode = document.getElementById('editPriceMode').value;
+        const wrapPercent = document.getElementById('editWrapProfitPercent');
+        const wrapNominal = document.getElementById('editWrapProfitNominal');
+        const sellingInput = document.getElementById('editSellingPrice');
+        const label = document.getElementById('editLabelSellingPrice');
 
-        const profitAmount = costPrice * (profitPercent / 100);
-        const subtotal = costPrice + profitAmount;
-        const taxAmount = includeTax ? (subtotal * vatRate / 100) : 0;
-        const rawPrice = subtotal + taxAmount;
+        wrapPercent.classList.add('hidden');
+        wrapNominal.classList.add('hidden');
 
-        // Round to nearest 100 (ceil)
-        const sellingPrice = Math.ceil(rawPrice / 100) * 100;
+        if (mode === 'percent') {
+            wrapPercent.classList.remove('hidden');
+            sellingInput.readOnly = true;
+            sellingInput.classList.add('bg-primary/10', 'text-primary', 'font-bold');
+            sellingInput.classList.remove('bg-surface-container-low');
+            label.textContent = 'Harga Jual (Auto)';
+        } else if (mode === 'nominal') {
+            wrapNominal.classList.remove('hidden');
+            sellingInput.readOnly = true;
+            sellingInput.classList.add('bg-primary/10', 'text-primary', 'font-bold');
+            sellingInput.classList.remove('bg-surface-container-low');
+            label.textContent = 'Harga Jual (Auto)';
+        } else {
+            sellingInput.readOnly = false;
+            sellingInput.classList.remove('bg-primary/10', 'text-primary', 'font-bold');
+            sellingInput.classList.add('bg-surface-container-low');
+            label.textContent = 'Harga Jual';
+        }
+        recalcEditPrice();
+    }
 
-        document.getElementById('editSellingPrice').value = sellingPrice;
+    function recalcEditPrice() {
+        const mode = document.getElementById('editPriceMode').value;
+        const cost = parseFloat(document.getElementById('editCostPrice').value) || 0;
+        if (mode === 'percent') {
+            const pct = parseFloat(document.getElementById('editProfitPercent').value) || 0;
+            document.getElementById('editSellingPrice').value = Math.ceil(cost * (1 + pct / 100) / 100) * 100 || 0;
+        } else if (mode === 'nominal') {
+            const nominal = parseFloat(document.getElementById('editProfitNominal').value) || 0;
+            document.getElementById('editSellingPrice').value = Math.ceil((cost + nominal) / 100) * 100 || 0;
+        }
+    }
+
+    function onEditCostPriceChange() { recalcEditPrice(); }
+    function onEditProfitPercentChange() { recalcEditPrice(); }
+    function onEditProfitNominalChange() { recalcEditPrice(); }
+
+    function onEditSellingPriceChange() {
+        const cost = parseFloat(document.getElementById('editCostPrice').value) || 0;
+        const selling = parseFloat(document.getElementById('editSellingPrice').value) || 0;
+        if (cost > 0 && selling >= cost) {
+            document.getElementById('editProfitPercent').value = Math.round(((selling - cost) / cost) * 10000) / 100;
+        }
     }
     
     function closeEditModal() {
