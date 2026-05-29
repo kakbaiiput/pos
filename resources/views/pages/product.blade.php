@@ -311,6 +311,16 @@
               placeholder="Enter product name" type="text" />
           </div>
           <div class="space-y-1.5">
+            <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Kategori</label>
+            <select name="category_id" required
+              class="w-full bg-surface-container-low border-none rounded-lg py-2.5 px-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none appearance-none">
+              <option value="">Pilih Kategori</option>
+              @foreach($categories as $category)
+                <option value="{{ $category->id }}">{{ $category->name }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="space-y-1.5">
             <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Satuan</label>
             <select name="unit"
               class="w-full bg-surface-container-low border-none rounded-lg py-2.5 px-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none appearance-none">
