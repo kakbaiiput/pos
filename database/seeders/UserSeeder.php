@@ -49,9 +49,9 @@ class UserSeeder extends Seeder
         foreach ($stores as $store) {
             for ($i = 0; $i < 3; $i++) {
                 $name = $admins[$adminIdx++];
-                User::create([
+                $email = strtolower(str_replace(' ', '.', $name)).'@test.com';
+                User::firstOrCreate(['email' => $email], [
                     'name' => $name,
-                    'email' => strtolower(str_replace(' ', '.', $name)).'@test.com',
                     'password' => Hash::make('password'),
                     'role' => 'admin',
                     'store_id' => $store->id,
@@ -60,9 +60,9 @@ class UserSeeder extends Seeder
 
             for ($i = 0; $i < 7; $i++) {
                 $name = $kasirs[$kasirIdx++];
-                User::create([
+                $email = strtolower(str_replace(' ', '.', $name)).'@test.com';
+                User::firstOrCreate(['email' => $email], [
                     'name' => $name,
-                    'email' => strtolower(str_replace(' ', '.', $name)).'@test.com',
                     'password' => Hash::make('password'),
                     'role' => 'kasir',
                     'store_id' => $store->id,

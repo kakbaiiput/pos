@@ -147,7 +147,7 @@ class PromotionsSeeder extends Seeder
         ];
 
         foreach ($promos as $data) {
-            Promotion::create($data);
+            Promotion::firstOrCreate(['name' => $data['name']], $data);
         }
     }
 }

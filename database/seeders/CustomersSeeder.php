@@ -31,7 +31,7 @@ class CustomersSeeder extends Seeder
 
         foreach ($customers as $data) {
             $code = 'MBR-'.strtoupper(substr(md5($data['phone']), 0, 6));
-            Customer::create(array_merge($data, ['code' => $code]));
+            Customer::firstOrCreate(['phone' => $data['phone']], array_merge($data, ['code' => $code]));
         }
     }
 }

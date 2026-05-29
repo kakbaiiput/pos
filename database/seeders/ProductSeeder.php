@@ -13,9 +13,9 @@ class ProductSeeder extends Seeder
 {
     public function run(): void
     {
-        $makanan = Category::create(['name' => 'Makanan']);
-        $minuman = Category::create(['name' => 'Minuman']);
-        $snack = Category::create(['name' => 'Snack']);
+        $makanan = Category::firstOrCreate(['name' => 'Makanan']);
+        $minuman = Category::firstOrCreate(['name' => 'Minuman']);
+        $snack = Category::firstOrCreate(['name' => 'Snack']);
 
         $suppliers = Supplier::all();
         $supplierMap = [];
@@ -46,7 +46,7 @@ class ProductSeeder extends Seeder
         foreach ($products as $p) {
             $supplierId = $supplierMap[$p['supplier']] ?? null;
 
-            $product = Product::create([
+            $product = Product::firstOrCreate(['name' => $p['name']], [
                 'name' => $p['name'],
                 'category_id' => $p['category_id'],
                 'selling_price' => $p['selling_price'],
@@ -58,11 +58,10 @@ class ProductSeeder extends Seeder
             ]);
 
             foreach ($stores as $store) {
-                StockProduct::create([
-                    'product_id' => $product->id,
-                    'store_id' => $store->id,
-                    'quantity' => $p['stock'],
-                ]);
+                StockProduct::firstOrCreate(
+                    ['product_id' => $product->id, 'store_id' => $store->id],
+                    ['quantity' => $p['stock']]
+                );
             }
         }
     }

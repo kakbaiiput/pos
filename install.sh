@@ -19,15 +19,10 @@ echo ""
 echo "[2/6] Generate APP_KEY..."
 php artisan key:generate --force
 
-# 3. Migrasi database
+# 3. Migrasi database + seed data awal
 echo ""
-echo "[3/6] Migrasi database..."
-php artisan migrate --force
-
-# 4. Seed data awal
-echo ""
-echo "[4/6] Isi data awal (seeder)..."
-php artisan db:seed --force
+echo "[3/6] Migrasi database + isi data awal..."
+php artisan migrate:fresh --seed --force
 
 # 5. Storage link
 echo ""

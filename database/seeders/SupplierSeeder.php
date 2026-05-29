@@ -69,7 +69,7 @@ class SupplierSeeder extends Seeder
         ];
 
         foreach ($suppliers as $s) {
-            Supplier::create($s);
+            Supplier::firstOrCreate(['name' => $s['name']], $s);
         }
     }
 }
