@@ -270,9 +270,17 @@ class ProductController extends Controller
                 ['product_id' => $product->id, 'store_id' => $storeId],
                 ['quantity' => $stockQty]
             );
+        } else {
+            // Super admin without store: update stock for all active stores
+            \App\Models\Store::where('status', 'active')->each(function ($store) use ($product, $stockQty) {
+                StockProduct::updateOrCreate(
+                    ['product_id' => $product->id, 'store_id' => $store->id],
+                    ['quantity' => $stockQty]
+                );
+            });
         }
 
-        return back();
+        return back()->with('success', 'Produk "'.$product->name.'" berhasil diupdate.');
     }
 
     public function destroy(Product $product)
