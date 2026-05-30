@@ -193,42 +193,104 @@
                 <!-- Right Column -->
                 <div class="col-span-12 lg:col-span-3 space-y-6">
                     <!-- Reconciliation Result (Visible ONLY after count is confirmed) -->
-                    <div x-show="countConfirmed" x-transition:enter="transition ease-out duration-500" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" class="space-y-6">
+                    <div x-show="countConfirmed" x-transition:enter="transition ease-out duration-500" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" class="space-y-4">
+
+                        <!-- Cash Reconciliation -->
                         <section class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-                            <h3 class="font-black text-xs text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                            <h3 class="font-black text-xs text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                                 <span class="material-symbols-outlined text-primary text-sm">balance</span>
-                                Reconciliation
+                                Rekonsiliasi Tunai
                             </h3>
-                            <div class="space-y-6">
-                                <div class="bg-slate-50 p-4 rounded-2xl">
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Actual (Counted)</p>
-                                    <p class="text-xl font-black text-on-surface" x-text="formatCurrency(actualCash)"></p>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase">Expected</span>
+                                    <span class="text-sm font-black text-slate-600">Rp{{ number_format($pendingClerek->expected_cash, 0, ',', '.') }}</span>
                                 </div>
-                                <div class="p-5 rounded-3xl text-center shadow-lg border-2"
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase">Actual (Hitung Fisik)</span>
+                                    <span class="text-sm font-black text-primary" x-text="formatCurrency(actualCash)"></span>
+                                </div>
+                                <div class="p-4 rounded-2xl text-center border-2 mt-2"
                                     :class="difference === 0 ? 'bg-green-50 border-green-200' : (difference < 0 ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200')">
-                                    <p class="text-[10px] font-black uppercase tracking-tighter mb-1" :class="difference === 0 ? 'text-green-600' : (difference < 0 ? 'text-red-600' : 'text-yellow-600')">Difference (Selisih)</p>
-                                    <p class="text-2xl font-black" :class="difference === 0 ? 'text-green-700' : (difference < 0 ? 'text-red-700' : 'text-yellow-700')"
+                                    <p class="text-[9px] font-black uppercase tracking-widest mb-1" :class="difference === 0 ? 'text-green-600' : (difference < 0 ? 'text-red-600' : 'text-yellow-600')">Selisih Tunai</p>
+                                    <p class="text-xl font-black" :class="difference === 0 ? 'text-green-700' : (difference < 0 ? 'text-red-700' : 'text-yellow-700')"
                                         x-text="(difference > 0 ? '+' : '') + formatCurrency(difference)"></p>
-                                    <span class="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full" 
+                                    <span class="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full mt-1 inline-block"
                                         :class="difference === 0 ? 'bg-green-200 text-green-800' : (difference < 0 ? 'bg-red-200 text-red-800' : 'bg-yellow-200 text-yellow-800')"
                                         x-text="difference === 0 ? 'BALANCED' : (difference < 0 ? 'SHORTAGE' : 'SURPLUS')"></span>
                                 </div>
                             </div>
                         </section>
 
+                        <!-- Non-Cash Verification -->
+                        @if($pendingClerek->qris_sales > 0 || $pendingClerek->debit_sales > 0 || $pendingClerek->credit_sales > 0)
                         <section class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Notes & Observation</label>
+                            <h3 class="font-black text-xs text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-indigo-500 text-sm">credit_card</span>
+                                Verifikasi Metode Digital
+                            </h3>
+                            <p class="text-[10px] font-bold text-slate-400 leading-relaxed mb-4">Cocokkan jumlah berikut dengan laporan settlement QRIS/EDC Anda.</p>
+                            <div class="space-y-3">
+                                @if($pendingClerek->qris_sales > 0)
+                                <div class="p-3 bg-indigo-50 rounded-2xl flex justify-between items-center">
+                                    <div class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-indigo-500 text-base">qr_code_2</span>
+                                        <span class="text-xs font-bold text-slate-600">QRIS</span>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="font-black text-sm text-indigo-700">Rp{{ number_format($pendingClerek->qris_sales, 0, ',', '.') }}</p>
+                                        <p class="text-[9px] text-indigo-400 font-bold">Cek via QRIS App</p>
+                                    </div>
+                                </div>
+                                @endif
+                                @if($pendingClerek->debit_sales > 0)
+                                <div class="p-3 bg-sky-50 rounded-2xl flex justify-between items-center">
+                                    <div class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-sky-500 text-base">credit_card</span>
+                                        <span class="text-xs font-bold text-slate-600">Debit</span>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="font-black text-sm text-sky-700">Rp{{ number_format($pendingClerek->debit_sales, 0, ',', '.') }}</p>
+                                        <p class="text-[9px] text-sky-400 font-bold">Cek via EDC Print</p>
+                                    </div>
+                                </div>
+                                @endif
+                                @if($pendingClerek->credit_sales > 0)
+                                <div class="p-3 bg-purple-50 rounded-2xl flex justify-between items-center">
+                                    <div class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-purple-500 text-base">payments</span>
+                                        <span class="text-xs font-bold text-slate-600">Kredit</span>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="font-black text-sm text-purple-700">Rp{{ number_format($pendingClerek->credit_sales, 0, ',', '.') }}</p>
+                                        <p class="text-[9px] text-purple-400 font-bold">Cek via EDC Print</p>
+                                    </div>
+                                </div>
+                                @endif
+                                <label class="flex items-start gap-2 pt-2 cursor-pointer">
+                                    <input type="checkbox" x-model="digitalConfirmed" class="mt-0.5 rounded text-primary">
+                                    <span class="text-[10px] font-bold text-slate-500 leading-tight">Saya konfirmasi jumlah metode digital sudah sesuai dengan laporan</span>
+                                </label>
+                            </div>
+                        </section>
+                        @endif
+
+                        <section class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Catatan</label>
                             <textarea x-model="notes" rows="3"
                                 class="w-full bg-slate-50 border-none focus:ring-2 focus:ring-primary/10 rounded-2xl text-xs font-bold p-4"
-                                placeholder="Explain any discrepancies..."></textarea>
+                                placeholder="Catat selisih atau keterangan lainnya..."></textarea>
                         </section>
 
-                        <button @click="processClerek({{ $pendingClerek->id }})" :disabled="submitting"
-                            class="w-full py-5 bg-gradient-to-br from-primary to-primary-container text-white rounded-[1.5rem] font-black text-sm shadow-xl shadow-primary/20 hover:scale-[0.98] transition-transform active:opacity-90 flex items-center justify-center gap-3 disabled:opacity-50">
+                        <button @click="processClerek({{ $pendingClerek->id }})" :disabled="submitting || !canFinalize"
+                            class="w-full py-5 bg-gradient-to-br from-primary to-primary-container text-white rounded-[1.5rem] font-black text-sm shadow-xl shadow-primary/20 hover:scale-[0.98] transition-transform active:opacity-90 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
                             <span x-show="!submitting">FINALISASI CLEREK</span>
                             <span x-show="submitting" class="material-symbols-outlined animate-spin text-xl font-black">autorenew</span>
                             <span x-show="!submitting" class="material-symbols-outlined text-xl font-black">check_circle</span>
                         </button>
+                        @if($pendingClerek->qris_sales > 0 || $pendingClerek->debit_sales > 0 || $pendingClerek->credit_sales > 0)
+                        <p x-show="!digitalConfirmed" class="text-[10px] font-bold text-amber-500 text-center">⚠ Centang konfirmasi metode digital untuk melanjutkan</p>
+                        @endif
                     </div>
 
                     <!-- Guidance Card -->
@@ -251,6 +313,10 @@
                             <li class="flex gap-2 items-start">
                                 <span class="w-4 h-4 rounded-full bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center flex-shrink-0">3</span>
                                 <p class="text-[11px] font-bold text-slate-500 leading-tight">Tekan Enter atau klik "Kunci" untuk membandingkan dengan sistem.</p>
+                            </li>
+                            <li class="flex gap-2 items-start">
+                                <span class="w-4 h-4 rounded-full bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center flex-shrink-0">4</span>
+                                <p class="text-[11px] font-bold text-slate-500 leading-tight">Cocokkan QRIS/Debit/Kredit dengan laporan settlement, lalu centang konfirmasi.</p>
                             </li>
                         </ul>
                     </div>
@@ -344,6 +410,8 @@
                 otherCash: 0,
                 difference: 0,
                 notes: '',
+                digitalConfirmed: {{ ($pendingClerek && ($pendingClerek->qris_sales > 0 || $pendingClerek->debit_sales > 0 || $pendingClerek->credit_sales > 0)) ? 'false' : 'true' }},
+                get canFinalize() { return this.digitalConfirmed; },
                 denominations: [
                     { value: 100000, qty: 0 },
                     { value: 50000, qty: 0 },
