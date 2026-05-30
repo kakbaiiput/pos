@@ -93,9 +93,9 @@
                                         class="w-7 h-7 flex items-center justify-center hover:bg-white rounded transition-colors text-slate-600">
                                         <span class="material-symbols-outlined text-sm">remove</span>
                                     </button>
-                                    <input type="number" min="1" :max="item.stock" x-model.number="item.quantity"
-                                        :data-item-id="item.id" @input="validateQuantity(item.id, item.stock)"
-                                        @change="validateQuantity(item.id, item.stock)"
+                                    <input type="number" min="1" :max="item.track_stock ? item.stock : 9999" x-model.number="item.quantity"
+                                        :data-item-id="item.id" @input="validateQuantity(item.id, item.track_stock ? item.stock : 9999)"
+                                        @change="validateQuantity(item.id, item.track_stock ? item.stock : 9999)"
                                         class="text-xs font-bold w-12 text-center bg-transparent border-none outline-none focus:ring-1 focus:ring-primary/20 rounded-md p-0"
                                         style="-moz-appearance: textfield;">
                                     <button type="button" @click="increaseQuantity(item.id)"
@@ -270,9 +270,9 @@
                                     class="w-6 h-6 flex items-center justify-center hover:bg-white rounded transition-colors text-slate-600">
                                     <span class="material-symbols-outlined text-sm">remove</span>
                                 </button>
-                                <input type="number" min="1" :max="item.stock" x-model.number="item.quantity"
-                                    :data-item-id="item.id" @input="validateQuantity(item.id, item.stock)"
-                                    @change="validateQuantity(item.id, item.stock)"
+                                <input type="number" min="1" :max="item.track_stock ? item.stock : 9999" x-model.number="item.quantity"
+                                    :data-item-id="item.id" @input="validateQuantity(item.id, item.track_stock ? item.stock : 9999)"
+                                    @change="validateQuantity(item.id, item.track_stock ? item.stock : 9999)"
                                     class="text-xs font-bold w-10 text-center bg-transparent border-none outline-none p-0"
                                     style="-moz-appearance: textfield;">
                                 <button type="button" @click="increaseQuantity(item.id)"
@@ -888,6 +888,7 @@
                     if (existing) {
                         if (!product.track_stock || existing.quantity < product.stock) {
                             existing.quantity = parseInt(existing.quantity) + 1;
+                            this.saveCart();
                         } else {
                             Swal.fire({ icon: 'warning', title: 'Stok Tidak Cukup', text: 'Stok produk tidak mencukupi', confirmButtonColor: '#3085d6' });
                         }
@@ -908,7 +909,7 @@
                     let item = this.cart.find(i => i.id == id);
                     if (item) {
                         let currentQty = parseInt(item.quantity) || 0;
-                        let max = parseInt(item.stock) || 9999;
+                        let max = item.track_stock ? (parseInt(item.stock) || 0) : 9999;
                         if (currentQty < max) item.quantity = currentQty + 1;
                         else Swal.fire({ icon: 'warning', title: 'Stok Tidak Cukup', text: 'Stok produk tidak mencukupi', confirmButtonColor: '#3085d6' });
                         this.saveCart();
