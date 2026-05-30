@@ -125,26 +125,11 @@ class PaymentController extends Controller
 
         // Validate stock per store
         foreach ($cart as $item) {
-            $product = Product::find($item['id']);
+            $product = Product::with('recipe.items')->find($item['id']);
             if ($product && $storeId) {
-                $stock = $product->getStockForStore($storeId);
-
-                // Check recipe if it's a finished good
-                $recipe = $product->recipe;
-                if ($recipe && $recipe->items->isNotEmpty()) {
-                    foreach ($recipe->items as $recipeItem) {
-                        $rawProduct = Product::find($recipeItem->product_id);
-                        if ($rawProduct) {
-                            $rawStock = $rawProduct->getStockForStore($storeId);
-                            if ($rawStock < ($recipeItem->quantity * $item['quantity'])) {
-                                return response()->json(['error' => "Stok {$rawProduct->name} tidak mencukupi"], 400);
-                            }
-                        }
-                    }
-                } else {
-                    if ($stock < $item['quantity']) {
-                        return response()->json(['error' => "Stok {$product->name} tidak mencukupi"], 400);
-                    }
+                $error = $product->checkSellable((int) $item['quantity'], (int) $storeId);
+                if ($error) {
+                    return response()->json(['error' => $error], 400);
                 }
             }
         }
@@ -481,40 +466,35 @@ class PaymentController extends Controller
                 'discount_description' => $discountDesc,
             ]);
 
-            // Deduct stock based on recipe
-            $product = Product::find($item['id']);
+            // Deduct stock
+            $product = Product::with('recipe.items')->find($item['id']);
             if ($product) {
                 $storeId = auth()->user()->store_id;
-
-                // Check if product has a recipe (finished good)
+                $qty = (int) $item['quantity'];
                 $recipe = $product->recipe;
 
+                // Always deduct recipe ingredients if product has a recipe
                 if ($recipe && $recipe->items->isNotEmpty()) {
-                    // This is a finished good - deduct from raw materials
                     foreach ($recipe->items as $recipeItem) {
                         $rawProduct = Product::find($recipeItem->product_id);
                         if ($rawProduct && $storeId) {
                             $stock = StockProduct::where('product_id', $rawProduct->id)
-                                ->where('store_id', $storeId)
-                                ->first();
-
+                                ->where('store_id', $storeId)->first();
                             if ($stock) {
-                                $stock->quantity = max(0, $stock->quantity - ($recipeItem->quantity * $item['quantity']));
+                                $stock->quantity = max(0, $stock->quantity - ($recipeItem->quantity * $qty));
                                 $stock->save();
                             }
                         }
                     }
-                } else {
-                    // Direct stock deduction for products without recipe
-                    if ($storeId) {
-                        $stock = StockProduct::where('product_id', $product->id)
-                            ->where('store_id', $storeId)
-                            ->first();
+                }
 
-                        if ($stock) {
-                            $stock->quantity = max(0, $stock->quantity - $item['quantity']);
-                            $stock->save();
-                        }
+                // Also deduct product stock itself if track_stock is enabled
+                if ($product->track_stock && $storeId) {
+                    $stock = StockProduct::where('product_id', $product->id)
+                        ->where('store_id', $storeId)->first();
+                    if ($stock) {
+                        $stock->quantity = max(0, $stock->quantity - $qty);
+                        $stock->save();
                     }
                 }
             }

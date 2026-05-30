@@ -483,7 +483,7 @@
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                         <template x-for="product in filteredProducts" :key="product.id">
                             <div @click="addToCartFromModal(product)"
-                                :class="product.stock === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-lg active:scale-[0.97]'"
+                                :class="!isProductAvailable(product) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-lg active:scale-[0.97]'"
                                 class="bg-surface-container-lowest rounded-xl overflow-hidden transition-all duration-200 border border-transparent hover:border-primary/20">
                                 <div
                                     class="relative h-28 overflow-hidden bg-slate-100 flex items-center justify-center">
@@ -494,12 +494,15 @@
                                         <span class="material-symbols-outlined text-slate-400 text-2xl">image</span>
                                     </template>
                                     <div class="absolute top-1.5 right-1.5">
-                                        <template x-if="product.stock > 0">
+                                        <template x-if="!product.track_stock">
+                                            <span class="px-1.5 py-0.5 bg-primary/80 text-white backdrop-blur text-[8px] font-bold rounded">Resep</span>
+                                        </template>
+                                        <template x-if="product.track_stock && product.stock > 0">
                                             <span
                                                 class="px-1.5 py-0.5 bg-surface-container-high/90 backdrop-blur text-[8px] font-bold rounded"
                                                 x-text="'(' + product.stock + ')'"></span>
                                         </template>
-                                        <template x-if="product.stock === 0">
+                                        <template x-if="product.track_stock && product.stock === 0">
                                             <span
                                                 class="px-1.5 py-0.5 bg-error/90 text-white backdrop-blur text-[8px] font-bold rounded">Habis</span>
                                         </template>
@@ -645,6 +648,8 @@
         'promo_end' => $p->promo_end,
         'image' => $p->image,
         'stock' => $p->current_stock,
+        'track_stock' => (bool) $p->track_stock,
+        'has_recipe' => $p->recipe && $p->recipe->items->isNotEmpty(),
         'category_id' => $p->category_id,
     ];
 })) !!};
@@ -832,10 +837,22 @@
                     document.getElementById('scanInput')?.focus();
                 },
 
+                isProductAvailable(product) {
+                    // Products without track_stock must have a recipe (enforced by admin)
+                    // Products with track_stock=true must have stock > 0
+                    if (product.track_stock) return product.stock > 0;
+                    // track_stock=false: rely on server-side recipe check at checkout
+                    return true;
+                },
+
                 addToCart(product) {
+                    if (!this.isProductAvailable(product)) {
+                        Swal.fire({ icon: 'warning', title: 'Stok Habis', text: `Stok ${product.name} tidak tersedia`, confirmButtonColor: '#3085d6', timer: 2000 });
+                        return;
+                    }
                     let existing = this.cart.find(i => i.id == product.id);
                     if (existing) {
-                        if (existing.quantity < product.stock) {
+                        if (!product.track_stock || existing.quantity < product.stock) {
                             existing.quantity = parseInt(existing.quantity) + 1;
                         } else {
                             Swal.fire({ icon: 'warning', title: 'Stok Tidak Cukup', text: 'Stok produk tidak mencukupi', confirmButtonColor: '#3085d6' });
@@ -848,7 +865,7 @@
                             const end = product.promo_end || today;
                             if (today >= start && today <= end) productPrice = product.promo_price;
                         }
-                        this.cart.push({ id: product.id, name: product.name, price: productPrice, image: product.image, stock: product.stock, quantity: 1 });
+                        this.cart.push({ id: product.id, name: product.name, price: productPrice, image: product.image, stock: product.stock, track_stock: product.track_stock, quantity: 1 });
                     }
                     this.saveCart();
                 },
@@ -1090,7 +1107,7 @@
                 },
 
                 addToCartFromModal(product) {
-                    if (product.stock === 0) return;
+                    if (!this.isProductAvailable(product)) return;
                     this.$dispatch('add-to-cart', product);
                     this.showProductModal = false;
                 }

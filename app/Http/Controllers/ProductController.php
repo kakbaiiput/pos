@@ -90,7 +90,10 @@ class ProductController extends Controller
             'barcode' => 'nullable|string|max:255',
             'primary_supplier_id' => 'nullable|exists:suppliers,id',
             'unit' => 'nullable|string|max:50',
+            'track_stock' => 'nullable|boolean',
         ]);
+
+        $data['track_stock'] = $request->boolean('track_stock');
 
         $storeId = auth()->user()->store_id;
         $vatRate = floatval(StoreSetting::getVal('vat', $storeId, '11'));
@@ -213,7 +216,10 @@ class ProductController extends Controller
             'barcode' => 'nullable|string|max:255',
             'primary_supplier_id' => 'nullable|exists:suppliers,id',
             'unit' => 'nullable|string|max:50',
+            'track_stock' => 'nullable|boolean',
         ]);
+
+        $data['track_stock'] = $request->boolean('track_stock');
 
         $storeId = auth()->user()->store_id;
         $vatRate = floatval(StoreSetting::getVal('vat', $storeId, '11'));

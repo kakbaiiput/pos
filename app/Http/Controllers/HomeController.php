@@ -34,7 +34,7 @@ class HomeController extends Controller
             $request->session()->forget('pending_cart');
         }
 
-        $products = Product::with(['category', 'stocks', 'primarySupplier'])->get()->unique('id')->map(function ($p) use ($storeId) {
+        $products = Product::with(['category', 'stocks', 'primarySupplier', 'recipe.items'])->get()->unique('id')->map(function ($p) use ($storeId) {
             $p->current_stock = $storeId ? $p->getStockForStore($storeId) : $p->getStockTotal();
 
             return $p;

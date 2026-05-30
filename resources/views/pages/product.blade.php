@@ -205,7 +205,7 @@
                         </button>
                         @if(auth()->user()->isSuperAdmin())
                         <button type="button"
-                          onclick="openEditModal({{ $product->id }}, '{{ $product->name }}', {{ $product->selling_price }}, {{ $product->cost_price ?? 0 }}, {{ $stockQty }}, {{ $product->threshold }}, {{ $product->promo_price ?? 'null' }}, '{{ $product->promo_start ?? '' }}', '{{ $product->promo_end ?? '' }}', {{ $product->category_id ?? 1 }}, {{ $product->profit_percentage ?? 0 }}, {{ $product->tax_amount ?? 0 }}, '{{ addslashes($product->barcode ?? '') }}', {{ $product->primary_supplier_id ?? 'null' }}, '{{ addslashes($product->unit ?? '') }}')"
+                          onclick="openEditModal({{ $product->id }}, '{{ $product->name }}', {{ $product->selling_price }}, {{ $product->cost_price ?? 0 }}, {{ $stockQty }}, {{ $product->threshold }}, {{ $product->promo_price ?? 'null' }}, '{{ $product->promo_start ?? '' }}', '{{ $product->promo_end ?? '' }}', {{ $product->category_id ?? 1 }}, {{ $product->profit_percentage ?? 0 }}, {{ $product->tax_amount ?? 0 }}, '{{ addslashes($product->barcode ?? '') }}', {{ $product->primary_supplier_id ?? 'null' }}, '{{ addslashes($product->unit ?? '') }}', {{ $product->track_stock ? 1 : 0 }})"
                           class="p-1.5 lg:p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
                           title="Edit Product">
                           <span class="material-symbols-outlined text-base lg:text-sm">edit</span>
@@ -387,6 +387,17 @@
               class="w-4 h-4 text-primary rounded focus:ring-primary/20" onchange="recalcAddPrice()">
             <label for="inputIncludeTax" class="text-sm text-on-surface-variant">
               Include Pajak (<span id="vatRateDisplay">11</span>%)
+            </label>
+          </div>
+          <div class="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div>
+              <div class="text-sm font-bold text-amber-800">Lacak Stok Produk</div>
+              <div class="text-xs text-amber-600">Matikan jika produk ini dibuat dari resep/bahan baku (made-to-order)</div>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer ml-3">
+              <input type="checkbox" name="track_stock" id="inputTrackStock" value="1" checked
+                class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
             </label>
           </div>
           <div class="grid grid-cols-2 gap-4">
@@ -779,6 +790,17 @@
               Include Pajak (<span class="editVatRate">{{ \App\Models\StoreSetting::getVal('vat', auth()->user()->store_id, '11') }}</span>%)
             </label>
           </div>
+          <div class="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div>
+              <div class="text-sm font-bold text-amber-800">Lacak Stok Produk</div>
+              <div class="text-xs text-amber-600">Matikan jika produk ini dibuat dari resep/bahan baku (made-to-order)</div>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer ml-3">
+              <input type="checkbox" name="track_stock" id="editTrackStock" value="1"
+                class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+            </label>
+          </div>
 
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1.5">
@@ -834,7 +856,7 @@
   </div>
 
 <script>
-    function openEditModal(id, name, sellingPrice, costPrice, stock, threshold, promoPrice, promoStart, promoEnd, categoryId, profitPercent = 0, taxIncluded = 0, barcode = '', supplierId = '', unit = '') {
+    function openEditModal(id, name, sellingPrice, costPrice, stock, threshold, promoPrice, promoStart, promoEnd, categoryId, profitPercent = 0, taxIncluded = 0, barcode = '', supplierId = '', unit = '', trackStock = 1) {
       document.getElementById('editProductModal').classList.remove('hidden');
       document.getElementById('editProductForm').action = '/product/' + id;
       document.getElementById('editProductId').value = id;
@@ -852,6 +874,7 @@
       document.getElementById('editUnit').value = unit;
 
       document.getElementById('editIncludeTax').checked = taxIncluded == 1;
+      document.getElementById('editTrackStock').checked = trackStock == 1;
 
       // Determine mode: if profitPercent > 0 → percent mode, else manual
       if (profitPercent > 0) {
