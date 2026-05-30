@@ -127,6 +127,18 @@ class StockInController extends Controller
 
     public function destroy(StockIn $stockIn)
     {
+        // Validate first: ensure no stock would go negative
+        foreach ($stockIn->items as $item) {
+            $stockProduct = StockProduct::where('product_id', $item->product_id)
+                ->where('store_id', $stockIn->store_id)
+                ->first();
+            if ($stockProduct && $stockProduct->quantity < $item->quantity) {
+                $productName = $item->product->name ?? "ID#{$item->product_id}";
+                return redirect('/stock-in')->with('error',
+                    "Tidak dapat menghapus: stok produk \"{$productName}\" saat ini {$stockProduct->quantity}, akan menjadi negatif jika dihapus.");
+            }
+        }
+
         foreach ($stockIn->items as $item) {
             $stockProduct = StockProduct::where('product_id', $item->product_id)
                 ->where('store_id', $stockIn->store_id)

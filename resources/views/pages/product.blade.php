@@ -876,15 +876,12 @@
       document.getElementById('editIncludeTax').checked = taxIncluded == 1;
       document.getElementById('editTrackStock').checked = trackStock == 1;
 
-      // Determine mode: if profitPercent > 0 → percent mode, else manual
-      if (profitPercent > 0) {
-        document.getElementById('editPriceMode').value = 'percent';
-        onEditPriceModeChange();
-      } else {
-        document.getElementById('editPriceMode').value = 'manual';
-        onEditPriceModeChange();
-        document.getElementById('editSellingPrice').value = sellingPrice;
-      }
+      // Always open in manual mode with the actual saved selling price.
+      // Pre-fill profitPercent for reference; user can switch mode manually.
+      document.getElementById('editPriceMode').value = 'manual';
+      onEditPriceModeChange();
+      document.getElementById('editSellingPrice').value = sellingPrice;
+      document.getElementById('editProfitPercent').value = profitPercent;
     }
 
     // ——— Edit Product: 3-mode pricing ———
