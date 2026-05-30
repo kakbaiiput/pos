@@ -63,6 +63,7 @@ class HomeController extends Controller
 
     public function stockCheck(Product $product, Request $request)
     {
+        $product->load('recipe.items');
         $storeId = auth()->user()->store_id;
         $qty = max(1, (int) $request->get('qty', 1));
         $error = $product->checkSellable($qty, (int) $storeId);

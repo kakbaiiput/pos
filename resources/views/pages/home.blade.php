@@ -854,13 +854,20 @@
                         try {
                             const existingQty = (this.cart.find(i => i.id == product.id)?.quantity || 0) + 1;
                             const res = await fetch(`/api/products/${product.id}/stock-check?qty=${existingQty}`);
+                            console.log('[stock-check]', product.id, 'qty', existingQty, 'status', res.status);
+                            if (!res.ok) {
+                                Swal.fire({ icon: 'error', title: 'Gagal Cek Stok', text: 'Tidak dapat memeriksa stok bahan. Coba lagi.', confirmButtonColor: '#3085d6' });
+                                return;
+                            }
                             const data = await res.json();
+                            console.log('[stock-check] response', data);
                             if (!data.available) {
                                 Swal.fire({ icon: 'warning', title: 'Bahan Tidak Cukup', text: data.message, confirmButtonColor: '#3085d6' });
                                 return;
                             }
                         } catch (e) {
-                            // Network error - allow add, server will validate at checkout
+                            Swal.fire({ icon: 'error', title: 'Gagal Cek Stok', text: 'Tidak dapat memeriksa stok bahan. Coba lagi.', confirmButtonColor: '#3085d6' });
+                            return;
                         }
                     }
 
