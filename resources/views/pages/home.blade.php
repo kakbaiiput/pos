@@ -483,7 +483,7 @@
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                         <template x-for="product in filteredProducts" :key="product.id">
                             <div @click="addToCartFromModal(product)"
-                                :class="!isProductAvailable(product) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-lg active:scale-[0.97]'"
+                                :class="(product.track_stock && product.stock === 0) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-lg active:scale-[0.97]'"
                                 class="bg-surface-container-lowest rounded-xl overflow-hidden transition-all duration-200 border border-transparent hover:border-primary/20">
                                 <div
                                     class="relative h-28 overflow-hidden bg-slate-100 flex items-center justify-center">
@@ -837,19 +837,33 @@
                     document.getElementById('scanInput')?.focus();
                 },
 
-                isProductAvailable(product) {
-                    // Products without track_stock must have a recipe (enforced by admin)
-                    // Products with track_stock=true must have stock > 0
+                isProductAvailableLocal(product) {
                     if (product.track_stock) return product.stock > 0;
-                    // track_stock=false: rely on server-side recipe check at checkout
-                    return true;
+                    return true; // recipe-based: will be checked via AJAX
                 },
 
-                addToCart(product) {
-                    if (!this.isProductAvailable(product)) {
+                async addToCart(product) {
+                    // Fast local check first (track_stock products)
+                    if (product.track_stock && product.stock <= 0) {
                         Swal.fire({ icon: 'warning', title: 'Stok Habis', text: `Stok ${product.name} tidak tersedia`, confirmButtonColor: '#3085d6', timer: 2000 });
                         return;
                     }
+
+                    // For recipe-based products, check ingredient stock real-time
+                    if (!product.track_stock) {
+                        try {
+                            const existingQty = (this.cart.find(i => i.id == product.id)?.quantity || 0) + 1;
+                            const res = await fetch(`/api/products/${product.id}/stock-check?qty=${existingQty}`);
+                            const data = await res.json();
+                            if (!data.available) {
+                                Swal.fire({ icon: 'warning', title: 'Bahan Tidak Cukup', text: data.message, confirmButtonColor: '#3085d6' });
+                                return;
+                            }
+                        } catch (e) {
+                            // Network error - allow add, server will validate at checkout
+                        }
+                    }
+
                     let existing = this.cart.find(i => i.id == product.id);
                     if (existing) {
                         if (!product.track_stock || existing.quantity < product.stock) {
@@ -1107,7 +1121,7 @@
                 },
 
                 addToCartFromModal(product) {
-                    if (!this.isProductAvailable(product)) return;
+                    if (product.track_stock && product.stock <= 0) return;
                     this.$dispatch('add-to-cart', product);
                     this.showProductModal = false;
                 }

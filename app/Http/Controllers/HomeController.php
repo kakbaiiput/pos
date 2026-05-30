@@ -61,6 +61,18 @@ class HomeController extends Controller
         ]);
     }
 
+    public function stockCheck(Product $product, Request $request)
+    {
+        $storeId = auth()->user()->store_id;
+        $qty = max(1, (int) $request->get('qty', 1));
+        $error = $product->checkSellable($qty, (int) $storeId);
+
+        return response()->json([
+            'available' => $error === null,
+            'message' => $error,
+        ]);
+    }
+
     public function searchProduct(Request $request)
     {
         $user = auth()->user();

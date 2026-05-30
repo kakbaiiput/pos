@@ -68,6 +68,7 @@ Route::middleware(['auth', 'cek_presensi'])->group(function () {
 
     Route::get('/', [HomeController::class, 'index']);
     Route::get('/api/products/search', [HomeController::class, 'searchProduct']);
+    Route::get('/api/products/{product}/stock-check', [HomeController::class, 'stockCheck']);
 
     Route::get('/presensi', [PresensiController::class, 'index']);
     Route::post('/presensi', [PresensiController::class, 'presensi']);
