@@ -198,6 +198,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/eod/generate', [EodController::class, 'generate']);
     Route::get('/eod/{eodReport}', [EodController::class, 'show']);
     Route::get('/eod/{eodReport}/print', [EodController::class, 'print']);
+    Route::post('/eod/{eodReport}/online-revenue', [EodController::class, 'updateOnlineRevenue']);
 
     // Purchase Orders
     Route::get('/purchase-orders', [PurchaseOrderController::class, 'index']);

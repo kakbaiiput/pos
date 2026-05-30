@@ -33,6 +33,9 @@ class EodReport extends Model
         'status',
         'generated_by',
         'notes',
+        'online_gofood',
+        'online_grabfood',
+        'online_shopeefood',
     ];
 
     protected $casts = [

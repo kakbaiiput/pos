@@ -105,6 +105,60 @@
         <p class="text-xs text-slate-400 mt-2">Total closings: {{ $eodReport->total_closings }}</p>
       </div>
 
+      <!-- Online Revenue Input -->
+      <div class="bg-surface-container-lowest rounded-xl lg:rounded-2xl shadow-[0_12px_32px_rgba(0,26,64,0.06)] p-4 lg:p-6 mb-6"
+           x-data="{
+               gofood: {{ $eodReport->online_gofood ?? 0 }},
+               grabfood: {{ $eodReport->online_grabfood ?? 0 }},
+               shopeefood: {{ $eodReport->online_shopeefood ?? 0 }},
+               saving: false,
+               saved: false,
+               get total() { return (parseFloat(this.gofood)||0) + (parseFloat(this.grabfood)||0) + (parseFloat(this.shopeefood)||0); },
+               async save() {
+                   this.saving = true;
+                   const res = await fetch('/eod/{{ $eodReport->id }}/online-revenue', {
+                       method: 'POST',
+                       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                       body: JSON.stringify({ online_gofood: this.gofood, online_grabfood: this.grabfood, online_shopeefood: this.shopeefood })
+                   });
+                   const data = await res.json();
+                   this.saving = false;
+                   if (data.success) { this.saved = true; setTimeout(() => this.saved = false, 3000); }
+               }
+           }">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-bold text-on-surface flex items-center gap-2">
+            <span class="material-symbols-outlined text-green-600 text-lg">storefront</span>
+            Pendapatan Online Platform
+          </h3>
+          <span x-show="saved" class="text-xs font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full">✓ Tersimpan</span>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">Input total pendapatan dari masing-masing platform hari ini (dari rekap aplikasi platform).</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+          @foreach([['GoFood','gofood','green'],['GrabFood','grabfood','emerald'],['ShopeeFood','shopeefood','orange']] as [$label,$field,$color])
+          <div class="p-4 bg-{{ $color }}-50 rounded-xl border border-{{ $color }}-100">
+            <label class="text-[10px] font-black text-{{ $color }}-700 uppercase tracking-widest block mb-2">{{ $label }}</label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-{{ $color }}-600">Rp</span>
+              <input type="number" x-model.number="{{ $field }}" min="0" placeholder="0"
+                class="w-full pl-10 pr-3 py-2 bg-white border border-{{ $color }}-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-{{ $color }}-300 outline-none">
+            </div>
+          </div>
+          @endforeach
+        </div>
+        <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+          <div>
+            <span class="text-xs font-bold text-slate-500">Total Online: </span>
+            <span class="text-base font-black text-on-surface" x-text="'Rp ' + total.toLocaleString('id-ID')"></span>
+          </div>
+          <button @click="save()" :disabled="saving"
+            class="px-5 py-2 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary/90 transition-colors disabled:opacity-50">
+            <span x-show="!saving">Simpan</span>
+            <span x-show="saving">Menyimpan...</span>
+          </button>
+        </div>
+      </div>
+
       <div class="bg-surface-container-lowest rounded-xl lg:rounded-2xl shadow-[0_12px_32px_rgba(0,26,64,0.06)] overflow-hidden mb-6">
         <div class="p-4 lg:p-6 bg-surface-container-low/30 border-b border-slate-100">
           <h3 class="text-base font-bold text-on-surface">Products Sold</h3>

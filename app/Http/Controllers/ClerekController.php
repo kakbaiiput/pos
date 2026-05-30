@@ -12,40 +12,34 @@ use Illuminate\Support\Facades\Auth;
 
 class ClerekController extends Controller
 {
-    /**
-     * Data Clerek (Reports & Reconciliation for Admin)
-     */
     public function index(Request $request)
     {
         $user = Auth::user();
-        $nik = $request->nik;
+        $nik  = $request->nik;
         $date = $request->date ?? now()->format('Y-m-d');
-        $targetUser = null;
+        $targetUser    = null;
         $pendingClerek = null;
-        $history = null;
+        $history       = null;
 
         if ($nik) {
-            // Restriction: Only search for users in the same store
             $targetUser = User::where('nik', $nik)
                 ->where('store_id', $user->store_id)
                 ->first();
 
             if ($targetUser) {
-                // Find pending clerek ONLY for the selected date
+                // All pending closings for this date (could be multiple shifts)
                 $pendingClerek = Closing::where('user_id', $targetUser->id)
                     ->where('status', 'pending')
                     ->whereDate('closing_date', $date)
                     ->latest()
                     ->first();
 
-                // Get history for this user at specific date
                 $history = Closing::where('user_id', $targetUser->id)
                     ->whereDate('closing_date', $date)
                     ->where('status', 'approved')
                     ->latest()
                     ->get();
 
-                // If no history on that date, show last 10 entries as fallback
                 if ($history->isEmpty()) {
                     $history = Closing::where('user_id', $targetUser->id)
                         ->where('status', 'approved')
@@ -57,43 +51,50 @@ class ClerekController extends Controller
         }
 
         return view('pages.clerek-data', [
-            'title' => 'Data Clerek',
-            'nik' => $nik,
-            'date' => $date,
-            'targetUser' => $targetUser,
-            'pendingClerek' => $pendingClerek,
-            'history' => $history,
+            'title'        => 'Data Clerek',
+            'nik'          => $nik,
+            'date'         => $date,
+            'targetUser'   => $targetUser,
+            'pendingClerek'=> $pendingClerek,
+            'history'      => $history,
         ]);
     }
 
-    /**
-     * Get summary data for POS Modal
-     */
-    public function summary()
+    public function summary(Request $request)
     {
-        $user = Auth::user();
-        $summary = $this->getShiftSummary($user);
+        $user  = Auth::user();
+        $shift = $request->get('shift', 'pagi');
+        $summary = $this->getShiftSummary($user, $shift);
 
         return response()->json($summary);
     }
 
     /**
-     * Helper to calculate sales summary for a user today.
+     * Calculate sales summary for a user's specific shift.
+     * Transactions are counted from after the last approved closing today,
+     * so shift-2 only sees transactions that happened after shift-1 closed.
      */
-    private function getShiftSummary($user)
+    private function getShiftSummary($user, string $shift = 'pagi')
     {
         $today = now()->format('Y-m-d');
 
-        // Exclude voided transactions from shift summary
+        // Find the most recent approved closing today for this user
+        // (could be a previous shift). Use its approved_at as the start of the current window.
+        $lastApproved = Closing::where('user_id', $user->id)
+            ->whereDate('closing_date', $today)
+            ->where('status', 'approved')
+            ->latest('approved_at')
+            ->first();
+
+        $since = $lastApproved ? $lastApproved->approved_at : now()->startOfDay();
+
         $sales = History::where('user_id', $user->id)
+            ->where('created_at', '>=', $since)
             ->whereDate('created_at', $today)
             ->where('status', '!=', 'voided')
             ->get();
 
-        $cashSales = 0;
-        $qrisSales = 0;
-        $debitSales = 0;
-        $creditSales = 0;
+        $cashSales = $qrisSales = $debitSales = $creditSales = 0;
 
         foreach ($sales as $trx) {
             if ($trx->payment_method === 'split') {
@@ -109,22 +110,25 @@ class ClerekController extends Controller
 
         $totalSales = $cashSales + $qrisSales + $debitSales + $creditSales;
 
-        // Opening balance from store settings (modal awal kas)
-        $openingBalance = (int) StoreSetting::getVal('opening_balance', $user->store_id, 0);
+        // Opening balance only applies to the first shift of the day
+        $openingBalance = $lastApproved
+            ? 0
+            : (int) StoreSetting::getVal('opening_balance', $user->store_id, 0);
 
-        // Expected cash = opening balance + cash sales
         $expectedCash = $openingBalance + $cashSales;
 
-        // Check if already closed today
-        $existing = Closing::where('user_id', $user->id)
+        // Check pending for THIS specific shift
+        $pendingThisShift = Closing::where('user_id', $user->id)
             ->whereDate('closing_date', $today)
-            ->where('status', 'approved')
+            ->where('shift', $shift)
+            ->where('status', 'pending')
             ->first();
 
-        // Check for pending
-        $pending = Closing::where('user_id', $user->id)
+        // Check approved for THIS specific shift
+        $approvedThisShift = Closing::where('user_id', $user->id)
             ->whereDate('closing_date', $today)
-            ->where('status', 'pending')
+            ->where('shift', $shift)
+            ->where('status', 'approved')
             ->first();
 
         return [
@@ -135,28 +139,33 @@ class ClerekController extends Controller
             'totalSales'     => (int) $totalSales,
             'openingBalance' => $openingBalance,
             'expectedCash'   => $expectedCash,
-            'isClosed'       => (bool) $existing,
-            'hasPending'     => (bool) $pending,
-            'existingData'   => $existing ?? $pending,
+            'shift'          => $shift,
+            'isClosed'       => (bool) $approvedThisShift,
+            'hasPending'     => (bool) $pendingThisShift,
+            'existingData'   => $approvedThisShift ?? $pendingThisShift,
         ];
     }
 
-    /**
-     * Initial shift closure by Cashier (creates 'pending' status).
-     */
     public function store(Request $request)
     {
-        $user = Auth::user();
+        $user  = Auth::user();
         $today = now()->format('Y-m-d');
+        $shift = $request->shift ?? 'pagi';
 
-        $summary = $this->getShiftSummary($user);
+        $summary = $this->getShiftSummary($user, $shift);
 
         if ($summary['isClosed']) {
-            return response()->json(['success' => false, 'message' => 'Anda sudah melakukan clerek hari ini.'], 400);
+            return response()->json([
+                'success' => false,
+                'message' => "Shift {$shift} Anda hari ini sudah di-clerek.",
+            ], 400);
         }
 
         if ($summary['hasPending']) {
-            return response()->json(['success' => false, 'message' => 'Anda memiliki clerek yang sedang menunggu verifikasi.'], 400);
+            return response()->json([
+                'success' => false,
+                'message' => "Shift {$shift} Anda sedang menunggu verifikasi admin.",
+            ], 400);
         }
 
         $isStaff = ! $user->hasMinRole('admin');
@@ -174,7 +183,7 @@ class ClerekController extends Controller
             'expected_cash'   => $summary['expectedCash'],
             'actual_cash'     => 0,
             'difference'      => -$summary['expectedCash'],
-            'shift'           => $request->shift ?? 'pagi',
+            'shift'           => $shift,
             'status'          => 'pending',
             'notes'           => $request->notes,
         ]);
@@ -186,22 +195,19 @@ class ClerekController extends Controller
         }
 
         return response()->json([
-            'success' => true,
-            'message' => $isStaff
-                ? 'Shift berhasil ditutup. Sistem akan logout otomatis. Silahkan serahkan uang ke Admin.'
-                : 'Shift berhasil ditutup. Anda tidak dapat melakukan transaksi lagi hari ini.',
+            'success'      => true,
+            'message'      => $isStaff
+                ? 'Shift berhasil ditutup. Silahkan serahkan uang ke Admin.'
+                : 'Shift berhasil ditutup.',
             'shouldLogout' => $isStaff,
-            'data' => $closing,
+            'data'         => $closing,
         ]);
     }
 
-    /**
-     * Admin processes the clerek by counting physical cash.
-     */
     public function process(Request $request)
     {
         $request->validate([
-            'closing_id' => 'required|exists:closings,id',
+            'closing_id'  => 'required|exists:closings,id',
             'actual_cash' => 'required|numeric|min:0',
         ]);
 
@@ -211,26 +217,27 @@ class ClerekController extends Controller
             return response()->json(['success' => false, 'message' => 'Clerek ini sudah diproses.'], 400);
         }
 
-        // Prevent multiple completions on same day for same user
-        $alreadyCompleted = Closing::where('user_id', $closing->user_id)
+        // Prevent duplicate: same user + same date + same shift
+        $alreadyApproved = Closing::where('user_id', $closing->user_id)
             ->whereDate('closing_date', $closing->closing_date)
+            ->where('shift', $closing->shift)
             ->where('status', 'approved')
             ->exists();
 
-        if ($alreadyCompleted) {
-            return response()->json(['success' => false, 'message' => 'Kasir ini sudah menyelesaikan clerek hari ini.'], 400);
+        if ($alreadyApproved) {
+            return response()->json([
+                'success' => false,
+                'message' => "Shift {$closing->shift} kasir ini sudah diverifikasi hari ini.",
+            ], 400);
         }
 
-        $actualCash = $request->actual_cash;
-        $difference = $actualCash - $closing->expected_cash;
-
         $closing->update([
-            'actual_cash' => $actualCash,
-            'difference' => $difference,
-            'status' => 'approved',
+            'actual_cash' => $request->actual_cash,
+            'difference'  => $request->actual_cash - $closing->expected_cash,
+            'status'      => 'approved',
             'approved_by' => Auth::id(),
             'approved_at' => now(),
-            'notes' => $request->notes ?? $closing->notes,
+            'notes'       => $request->notes ?? $closing->notes,
         ]);
 
         return response()->json([
@@ -239,14 +246,11 @@ class ClerekController extends Controller
         ]);
     }
 
-    /**
-     * Print Clerek Settlement Receipt
-     */
     public function print(Closing $closing)
     {
         return view('print.clerek', [
             'closing' => $closing,
-            'store' => $closing->store,
+            'store'   => $closing->store,
         ]);
     }
 }

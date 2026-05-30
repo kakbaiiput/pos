@@ -241,4 +241,25 @@ class EodController extends Controller
             'eodReport' => $eodReport,
         ]);
     }
+
+    public function updateOnlineRevenue(Request $request, EodReport $eodReport)
+    {
+        $request->validate([
+            'online_gofood'     => 'nullable|numeric|min:0',
+            'online_grabfood'   => 'nullable|numeric|min:0',
+            'online_shopeefood' => 'nullable|numeric|min:0',
+        ]);
+
+        $eodReport->update([
+            'online_gofood'     => $request->online_gofood     ?? 0,
+            'online_grabfood'   => $request->online_grabfood   ?? 0,
+            'online_shopeefood' => $request->online_shopeefood ?? 0,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pendapatan online berhasil disimpan.',
+            'data'    => $eodReport->fresh(),
+        ]);
+    }
 }
