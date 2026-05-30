@@ -40,14 +40,14 @@ class ClerekController extends Controller
                 // Get history for this user at specific date
                 $history = Closing::where('user_id', $targetUser->id)
                     ->whereDate('closing_date', $date)
-                    ->where('status', 'completed')
+                    ->where('status', 'approved')
                     ->latest()
                     ->get();
 
                 // If no history on that date, show last 10 entries as fallback
                 if ($history->isEmpty()) {
                     $history = Closing::where('user_id', $targetUser->id)
-                        ->where('status', 'completed')
+                        ->where('status', 'approved')
                         ->latest()
                         ->take(10)
                         ->get();
@@ -109,7 +109,7 @@ class ClerekController extends Controller
         // Check if already closed today (completed)
         $existing = Closing::where('user_id', $user->id)
             ->whereDate('closing_date', $today)
-            ->where('status', 'completed')
+            ->where('status', 'approved')
             ->first();
 
         // Check for pending
@@ -203,7 +203,7 @@ class ClerekController extends Controller
         // Prevent multiple completions on same day for same user
         $alreadyCompleted = Closing::where('user_id', $closing->user_id)
             ->whereDate('closing_date', $closing->closing_date)
-            ->where('status', 'completed')
+            ->where('status', 'approved')
             ->exists();
 
         if ($alreadyCompleted) {
@@ -216,8 +216,9 @@ class ClerekController extends Controller
         $closing->update([
             'actual_cash' => $actualCash,
             'difference' => $difference,
-            'status' => 'completed',
-            'approver_id' => Auth::id(),
+            'status' => 'approved',
+            'approved_by' => Auth::id(),
+            'approved_at' => now(),
             'notes' => $request->notes ?? $closing->notes,
         ]);
 

@@ -63,7 +63,7 @@ class EodController extends Controller
 
         $transactions = History::where('store_id', $storeId)
             ->whereDate('created_at', $today)
-            ->where('status', 'completed')
+            ->where('status', 'approved')
             ->get();
 
         if ($transactions->isEmpty()) {
@@ -103,7 +103,7 @@ class EodController extends Controller
 
             $closings = Closing::where('store_id', $storeId)
                 ->whereDate('closing_date', $today)
-                ->where('status', 'completed')
+                ->where('status', 'approved')
                 ->get();
 
             $totalExpectedCash = $closings->sum('expected_cash');
