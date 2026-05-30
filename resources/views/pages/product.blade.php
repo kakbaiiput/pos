@@ -367,7 +367,7 @@
               <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Nominal Profit (Rp)</label>
               <div class="relative">
                 <span class="absolute left-3 inset-y-0 flex items-center text-on-surface-variant text-xs font-semibold">Rp</span>
-                <input id="inputProfitNominal" value="0"
+                <input id="inputProfitNominal" value="0" disabled
                   class="w-full bg-surface-container-low border-none rounded-lg py-2 pl-7 pr-2 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                   placeholder="0" type="number" oninput="onProfitNominalChange()" />
               </div>
@@ -501,20 +501,26 @@
         const mode = document.getElementById('inputPriceMode').value;
         const wrapPercent = document.getElementById('wrapProfitPercent');
         const wrapNominal = document.getElementById('wrapProfitNominal');
+        const inputPercent = document.getElementById('inputProfitPercent');
+        const inputNominal = document.getElementById('inputProfitNominal');
         const sellingInput = document.getElementById('inputSellingPrice');
         const label = document.getElementById('labelSellingPrice');
 
         wrapPercent.classList.add('hidden');
         wrapNominal.classList.add('hidden');
+        inputPercent.disabled = true;
+        inputNominal.disabled = true;
 
         if (mode === 'percent') {
             wrapPercent.classList.remove('hidden');
+            inputPercent.disabled = false;
             sellingInput.readOnly = true;
             sellingInput.classList.add('bg-primary/10', 'text-primary', 'font-bold');
             sellingInput.classList.remove('bg-surface-container-low');
             label.textContent = 'Harga Jual (Auto)';
         } else if (mode === 'nominal') {
             wrapNominal.classList.remove('hidden');
+            inputNominal.disabled = false;
             sellingInput.readOnly = true;
             sellingInput.classList.add('bg-primary/10', 'text-primary', 'font-bold');
             sellingInput.classList.remove('bg-surface-container-low');
@@ -751,7 +757,7 @@
               <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Nominal Profit (Rp)</label>
               <div class="relative">
                 <span class="absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs">Rp</span>
-                <input id="editProfitNominal" value="0"
+                <input id="editProfitNominal" value="0" disabled
                   class="w-full bg-surface-container-low border-none rounded-lg py-2 pl-7 pr-2 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                   type="number" oninput="onEditProfitNominalChange()" />
               </div>
@@ -863,20 +869,26 @@
         const mode = document.getElementById('editPriceMode').value;
         const wrapPercent = document.getElementById('editWrapProfitPercent');
         const wrapNominal = document.getElementById('editWrapProfitNominal');
+        const inputPercent = document.getElementById('editProfitPercent');
+        const inputNominal = document.getElementById('editProfitNominal');
         const sellingInput = document.getElementById('editSellingPrice');
         const label = document.getElementById('editLabelSellingPrice');
 
         wrapPercent.classList.add('hidden');
         wrapNominal.classList.add('hidden');
+        inputPercent.disabled = true;
+        inputNominal.disabled = true;
 
         if (mode === 'percent') {
             wrapPercent.classList.remove('hidden');
+            inputPercent.disabled = false;
             sellingInput.readOnly = true;
             sellingInput.classList.add('bg-primary/10', 'text-primary', 'font-bold');
             sellingInput.classList.remove('bg-surface-container-low');
             label.textContent = 'Harga Jual (Auto)';
         } else if (mode === 'nominal') {
             wrapNominal.classList.remove('hidden');
+            inputNominal.disabled = false;
             sellingInput.readOnly = true;
             sellingInput.classList.add('bg-primary/10', 'text-primary', 'font-bold');
             sellingInput.classList.remove('bg-surface-container-low');
