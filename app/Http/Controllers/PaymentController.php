@@ -115,6 +115,7 @@ class PaymentController extends Controller
             'loyalty_point_value' => floatval(StoreSetting::getVal('loyalty_point_value', $storeId, '1000')),
             'loyalty_min_redeem' => intval(StoreSetting::getVal('loyalty_min_redeem', $storeId, '10')),
             'loyalty_points_per_rupiah' => intval(StoreSetting::getVal('loyalty_points_per_rupiah', $storeId, '10000')),
+            'midtrans_configured' => !empty(Setting::getVal('midtrans_server_key', '')),
         ]);
     }
 

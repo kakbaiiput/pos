@@ -537,6 +537,37 @@
                         <div x-cloak x-show="method === 'qris'"
                             class="flex flex-col h-full items-center justify-center text-center">
 
+                            @if(!$midtrans_configured)
+                            {{-- ── QRIS MANUAL MODE (no gateway configured) ── --}}
+                            <div x-show="!qrisSuccess"
+                                class="flex flex-col items-center gap-3 sm:gap-4 py-6 sm:py-8 w-full px-4">
+                                <div class="w-16 h-16 sm:w-20 sm:h-20 bg-primary/10 rounded-full flex items-center justify-center mb-1">
+                                    <span class="material-symbols-outlined text-primary text-4xl sm:text-5xl">qr_code_scanner</span>
+                                </div>
+                                <h3 class="font-headline font-bold text-lg sm:text-xl text-on-surface">Bayar via QRIS</h3>
+                                <p class="text-xs sm:text-sm text-on-surface-variant max-w-[260px]">
+                                    Arahkan pelanggan scan QRIS statis Anda, lalu klik <b>Konfirmasi</b> setelah pembayaran diterima.
+                                </p>
+                                <div class="w-full bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700 font-medium">
+                                    Mode Manual — pembayaran <b>tidak diverifikasi otomatis</b>. Kasir bertanggung jawab mengkonfirmasi.
+                                </div>
+                                <button type="button" @click="confirmManualQris()"
+                                    class="mt-2 w-full bg-primary text-white font-bold py-3 px-6 rounded-lg shadow-md shadow-primary/20 hover:bg-primary-container active:scale-95 transition-all flex items-center justify-center gap-2 text-sm">
+                                    <span class="material-symbols-outlined text-sm">check_circle</span>
+                                    Konfirmasi Pembayaran QRIS
+                                </button>
+                            </div>
+                            <div x-show="qrisSuccess"
+                                class="flex flex-col items-center justify-center h-full w-full py-8 gap-3">
+                                <div class="w-16 h-16 sm:w-24 sm:h-24 bg-green-100 rounded-full flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-green-600 text-5xl sm:text-6xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                                </div>
+                                <h3 class="font-headline font-extrabold text-xl text-on-surface mt-2">Pembayaran Terkonfirmasi!</h3>
+                                <p class="text-on-surface-variant text-xs">Mengalihkan ke struk...</p>
+                                <button type="submit" x-ref="qrisSubmitBtn" class="hidden"></button>
+                            </div>
+                            @else
+                            {{-- ── QRIS GATEWAY MODE (Midtrans configured) ── --}}
                             <div x-show="!qrisActive && !qrisLoading && !qrisSuccess"
                                 class="flex flex-col items-center gap-3 sm:gap-4 py-6 sm:py-8">
                                 <div
@@ -544,11 +575,8 @@
                                     <span
                                         class="material-symbols-outlined text-primary text-4xl sm:text-5xl">qr_code_scanner</span>
                                 </div>
-                                <h3 class="font-headline font-bold text-lg sm:text-xl text-on-surface">Pay with QRIS
-                                </h3>
-                                <p class="text-xs sm:text-sm text-on-surface-variant max-w-[250px]">Generate kode QR
-                                    untuk
-                                    pelanggan scan dengan e-Wallet atau aplikasi bank.</p>
+                                <h3 class="font-headline font-bold text-lg sm:text-xl text-on-surface">Pay with QRIS</h3>
+                                <p class="text-xs sm:text-sm text-on-surface-variant max-w-[250px]">Generate kode QR untuk pelanggan scan dengan e-Wallet atau aplikasi bank.</p>
                                 <button type="button" @click="generateQris()"
                                     class="mt-2 sm:mt-4 w-full bg-primary text-white font-bold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg shadow-md shadow-primary/20 hover:bg-primary-container active:scale-95 transition-all flex items-center justify-center gap-2 text-sm sm:text-base">
                                     <span class="material-symbols-outlined text-sm">qr_code_2</span>
@@ -557,10 +585,8 @@
                             </div>
 
                             <div x-show="qrisLoading" class="flex flex-col items-center gap-4 py-12">
-                                <span
-                                    class="material-symbols-outlined animate-spin text-primary text-4xl">autorenew</span>
-                                <p class="text-sm font-semibold text-on-surface-variant animate-pulse">Connecting to
-                                    Midtrans...</p>
+                                <span class="material-symbols-outlined animate-spin text-primary text-4xl">autorenew</span>
+                                <p class="text-sm font-semibold text-on-surface-variant animate-pulse">Connecting to Midtrans...</p>
                             </div>
 
                             <div x-show="qrisActive && !qrisSuccess" class="flex flex-col w-full h-full">
@@ -617,6 +643,7 @@
                                 <p class="text-on-surface-variant text-xs sm:text-sm">Mengalihkan ke struk...</p>
                                 <button type="submit" x-ref="qrisSubmitBtn" class="hidden"></button>
                             </div>
+                            @endif
 
                         </div>
                     </div>
@@ -1003,6 +1030,23 @@
                 },
 
                 // --- QRIS Logic (Core API) ---
+                confirmManualQris() {
+                    Swal.fire({
+                        icon: 'question',
+                        title: 'Konfirmasi Pembayaran QRIS?',
+                        text: 'Pastikan pelanggan sudah berhasil scan dan membayar sebelum mengkonfirmasi.',
+                        showCancelButton: true,
+                        confirmButtonText: 'Ya, Sudah Dibayar',
+                        cancelButtonText: 'Batal',
+                        confirmButtonColor: '#003f87',
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            this.qrisSuccess = true;
+                            setTimeout(() => { this.$refs.qrisSubmitBtn?.click(); }, 800);
+                        }
+                    });
+                },
+
                 async generateQris() {
                     this.qrisLoading = true;
                     this.qrisActive = false;
