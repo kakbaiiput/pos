@@ -39,7 +39,7 @@
     </div>
 
     <div class="header text-center">
-        <h2 style="margin: 0;">{{ $store->name ?? 'Arka POS' }}</h2>
+        <h2 style="margin: 0;">{{ $store->name ?? 'Octolink.ID POS' }}</h2>
         <div style="font-size: 10px;">{{ $store->address ?? 'End-of-Shift Report' }}</div>
     </div>
 

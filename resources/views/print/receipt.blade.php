@@ -54,7 +54,7 @@
 
     @php
         $storeId = $history->store_id;
-        $storeName = \App\Models\StoreSetting::getVal('store_name', $storeId, 'Arka POS');
+        $storeName = \App\Models\StoreSetting::getVal('store_name', $storeId, 'Octolink.ID POS');
         $storeAddress = \App\Models\StoreSetting::getVal('store_address', $storeId, '');
         $storePhone = \App\Models\StoreSetting::getVal('store_phone', $storeId, '');
         $vatRate = \App\Models\StoreSetting::getVal('vat', $storeId, '11');

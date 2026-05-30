@@ -7,12 +7,12 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>{{ $title }}</title>
     <meta name="theme-color" content="#003f87" />
-    <meta name="description" content="Arka POS - Point of Sale Application" />
+    <meta name="description" content="Octolink.ID POS - Point of Sale Application" />
 
     <!-- PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Arka POS" />
+    <meta name="apple-mobile-web-app-title" content="Octolink.ID POS" />
     <meta name="mobile-web-app-capable" content="yes" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/png" sizes="192x192" href="/pwa/icon-192.png" />

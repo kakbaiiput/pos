@@ -55,7 +55,7 @@ function toggleMobileSidebar() {
       </div>
       <div class="flex flex-col min-w-0 sidebar-text">
         <span class="text-base font-black text-slate-800 dark:text-white tracking-tight truncate leading-tight">{{ $storeName ?? 'Toko' }}</span>
-        <span class="text-[10px] font-black uppercase tracking-widest text-primary/60 dark:text-primary-fixed-dim">{{ $storeCode ?? 'ARKA POS' }}</span>
+        <span class="text-[10px] font-black uppercase tracking-widest text-primary/60 dark:text-primary-fixed-dim">{{ $storeCode ?? 'OCTOLINK.ID POS' }}</span>
       </div>
     </div>
   </div>

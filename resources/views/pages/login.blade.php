@@ -117,7 +117,7 @@
                 </div>
                 <div>
                     <h1 class="font-headline font-extrabold text-2xl text-white tracking-tight">POS System</h1>
-                    <p class="text-white/70 text-sm font-medium">Arka POS Platform</p>
+                    <p class="text-white/70 text-sm font-medium">Octolink.ID POS Platform</p>
                 </div>
             </div>
 
@@ -181,7 +181,7 @@
                 </div>
                 <div>
                     <h1 class="font-headline font-extrabold text-xl text-primary">POS System</h1>
-                    <p class="text-on-surface-variant text-xs">Arka POS</p>
+                    <p class="text-on-surface-variant text-xs">Octolink.ID POS</p>
                 </div>
             </div>
 
