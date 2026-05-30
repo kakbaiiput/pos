@@ -14,7 +14,7 @@ class History extends Model
         'payment_method', 'payment_status', 'status', 'tax', 'service',
         'promo_discount', 'points_discount', 'tier_discount', 'voucher_discount',
         'amount_received', 'change_amount', 'notes', 'void_reason', 'voided_by',
-        'cashier_name',
+        'cashier_name', 'void_otp', 'void_otp_expires_at', 'void_otp_admin_id',
     ];
 
     public function user()
