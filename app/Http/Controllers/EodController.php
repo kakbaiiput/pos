@@ -63,7 +63,7 @@ class EodController extends Controller
 
         $transactions = History::where('store_id', $storeId)
             ->whereDate('created_at', $today)
-            ->where('status', 'approved')
+            ->where('status', '!=', 'voided')
             ->get();
 
         if ($transactions->isEmpty()) {
