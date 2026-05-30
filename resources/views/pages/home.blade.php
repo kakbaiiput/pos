@@ -708,6 +708,17 @@
                 scanCooldown: false,
 
                 init() {
+                    // Sync cart items with latest product data (track_stock, stock)
+                    // to avoid stale localStorage data after product edits
+                    this.cart = this.cart.map(item => {
+                        const fresh = this.products.find(p => p.id == item.id);
+                        if (fresh) {
+                            item.track_stock = fresh.track_stock;
+                            item.stock = fresh.stock;
+                            item.has_recipe = fresh.has_recipe;
+                        }
+                        return item;
+                    });
                     document.getElementById('scanInput')?.focus();
                 },
 
