@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Closing;
 use App\Models\History;
 use App\Models\Store;
+use App\Models\StoreSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -83,8 +84,10 @@ class ClerekController extends Controller
     {
         $today = now()->format('Y-m-d');
 
+        // Exclude voided transactions from shift summary
         $sales = History::where('user_id', $user->id)
             ->whereDate('created_at', $today)
+            ->where('status', '!=', 'voided')
             ->get();
 
         $cashSales = 0;
@@ -106,7 +109,13 @@ class ClerekController extends Controller
 
         $totalSales = $cashSales + $qrisSales + $debitSales + $creditSales;
 
-        // Check if already closed today (completed)
+        // Opening balance from store settings (modal awal kas)
+        $openingBalance = (int) StoreSetting::getVal('opening_balance', $user->store_id, 0);
+
+        // Expected cash = opening balance + cash sales
+        $expectedCash = $openingBalance + $cashSales;
+
+        // Check if already closed today
         $existing = Closing::where('user_id', $user->id)
             ->whereDate('closing_date', $today)
             ->where('status', 'approved')
@@ -119,15 +128,16 @@ class ClerekController extends Controller
             ->first();
 
         return [
-            'cashSales' => (int) $cashSales,
-            'qrisSales' => (int) $qrisSales,
-            'debitSales' => (int) $debitSales,
-            'creditSales' => (int) $creditSales,
-            'totalSales' => (int) $totalSales,
-            'expectedCash' => (int) $cashSales,
-            'isClosed' => (bool) $existing,
-            'hasPending' => (bool) $pending,
-            'existingData' => $existing ?? $pending,
+            'cashSales'      => (int) $cashSales,
+            'qrisSales'      => (int) $qrisSales,
+            'debitSales'     => (int) $debitSales,
+            'creditSales'    => (int) $creditSales,
+            'totalSales'     => (int) $totalSales,
+            'openingBalance' => $openingBalance,
+            'expectedCash'   => $expectedCash,
+            'isClosed'       => (bool) $existing,
+            'hasPending'     => (bool) $pending,
+            'existingData'   => $existing ?? $pending,
         ];
     }
 
@@ -152,20 +162,21 @@ class ClerekController extends Controller
         $isStaff = ! $user->hasMinRole('admin');
 
         $closing = Closing::create([
-            'user_id' => $user->id,
-            'store_id' => $user->store_id,
-            'closing_date' => $today,
-            'total_sales' => $summary['totalSales'],
-            'cash_sales' => $summary['cashSales'],
-            'qris_sales' => $summary['qrisSales'],
-            'debit_sales' => $summary['debitSales'],
-            'credit_sales' => $summary['creditSales'],
-            'expected_cash' => $summary['expectedCash'],
-            'actual_cash' => 0,
-            'difference' => -$summary['expectedCash'],
-            'shift' => $request->shift ?? 'pagi',
-            'status' => 'pending',
-            'notes' => $request->notes,
+            'user_id'         => $user->id,
+            'store_id'        => $user->store_id,
+            'closing_date'    => $today,
+            'opening_balance' => $summary['openingBalance'],
+            'total_sales'     => $summary['totalSales'],
+            'cash_sales'      => $summary['cashSales'],
+            'qris_sales'      => $summary['qrisSales'],
+            'debit_sales'     => $summary['debitSales'],
+            'credit_sales'    => $summary['creditSales'],
+            'expected_cash'   => $summary['expectedCash'],
+            'actual_cash'     => 0,
+            'difference'      => -$summary['expectedCash'],
+            'shift'           => $request->shift ?? 'pagi',
+            'status'          => 'pending',
+            'notes'           => $request->notes,
         ]);
 
         if ($isStaff) {

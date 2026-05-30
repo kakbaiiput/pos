@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Closing;
 use App\Models\History;
 use App\Models\StockProduct;
 use App\Models\User;
@@ -133,6 +134,19 @@ class HistoryController extends Controller
 
         if ($history->status === 'voided') {
             return response()->json(['success' => false, 'message' => 'Transaksi sudah dibatalkan sebelumnya.'], 400);
+        }
+
+        // Block void if the cashier's shift for this transaction date has been approved
+        $shiftApproved = Closing::where('user_id', $history->user_id)
+            ->whereDate('closing_date', $history->created_at->toDateString())
+            ->where('status', 'approved')
+            ->exists();
+
+        if ($shiftApproved) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Transaksi tidak dapat di-void karena shift kasir pada tanggal tersebut sudah ditutup dan diverifikasi admin. Hubungi Super Admin untuk koreksi manual.',
+            ], 403);
         }
 
         // Get the admin who was authorized

@@ -93,6 +93,15 @@
                                 Sales Summary (System)
                             </h3>
                             <div class="space-y-3">
+                                @if($pendingClerek->opening_balance > 0)
+                                <div class="p-3 bg-amber-50 rounded-2xl flex justify-between items-center">
+                                    <div class="flex items-center gap-3">
+                                        <span class="material-symbols-outlined text-amber-500 text-xl">account_balance_wallet</span>
+                                        <span class="text-xs font-bold text-slate-600">Modal Awal (Kas)</span>
+                                    </div>
+                                    <span class="font-black text-amber-700 text-sm">Rp{{ number_format($pendingClerek->opening_balance, 0, ',', '.') }}</span>
+                                </div>
+                                @endif
                                 @foreach([
                                     ['Tunai (Cash)', $pendingClerek->cash_sales, 'payments'],
                                     ['QRIS', $pendingClerek->qris_sales, 'qr_code_2'],
@@ -106,10 +115,11 @@
                                     <span class="font-black text-on-surface text-sm">Rp{{ number_format($item[1], 0, ',', '.') }}</span>
                                 </div>
                                 @endforeach
-                                
-                                <div class="pt-6 mt-4 border-t-2 border-slate-50 flex justify-between items-end px-1">
+
+                                <div class="pt-4 mt-2 border-t-2 border-slate-50 flex justify-between items-end px-1">
                                     <div>
                                         <p class="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Expected Cash</p>
+                                        <p class="text-[9px] text-slate-400 font-bold mb-1">Modal Awal + Tunai</p>
                                         <span class="text-3xl font-black text-primary">Rp{{ number_format($pendingClerek->expected_cash, 0, ',', '.') }}</span>
                                     </div>
                                 </div>
