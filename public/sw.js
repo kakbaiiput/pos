@@ -1,209 +1,157 @@
-const CACHE_NAME = 'pos-app-v1';
-const STATIC_CACHE = 'pos-static-v1';
-const DYNAMIC_CACHE = 'pos-dynamic-v1';
+const CACHE_NAME = 'pos-app-v2';
+const STATIC_CACHE = 'pos-static-v2';
+const DYNAMIC_CACHE = 'pos-dynamic-v2';
 
-// Assets to cache immediately on install
-const STATIC_ASSETS = [
-    '/',
-    '/manifest.json',
-    'https://cdn.tailwindcss.com?plugins=forms,container-queries',
-    'https://cdn.jsdelivr.net/npm/sweetalert2@11',
-    'https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css',
-    'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js',
-    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;700;800&display=swap',
-    'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap',
-];
+// Only cache same-origin assets on install (CDN blocked by CORS)
+const STATIC_ASSETS = ['/'];
 
-// Pages that should be available offline (for kasir role)
-const OFFLINE_PAGES = [
-    '/',
-    '/pending-orders',
-    '/history',
-    '/presensi-page',
-];
-
-// API endpoints to cache
+// Offline API data endpoints
 const OFFLINE_APIS = [
     '/api/offline/products',
     '/api/offline/stocks',
     '/api/offline/categories',
 ];
 
-// Install event - cache static assets
+// ── Install ───────────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
-    console.log('[SW] Installing service worker...');
     event.waitUntil(
         caches.open(STATIC_CACHE)
-            .then((cache) => {
-                console.log('[SW] Caching static assets');
-                return cache.addAll(STATIC_ASSETS);
-            })
+            .then((cache) => cache.addAll(STATIC_ASSETS))
             .then(() => self.skipWaiting())
     );
 });
 
-// Activate event - clean up old caches
+// ── Activate ──────────────────────────────────────────────────────────────────
 self.addEventListener('activate', (event) => {
-    console.log('[SW] Activating service worker...');
     event.waitUntil(
-        caches.keys().then((keys) => {
-            return Promise.all(
-                keys.filter((key) => key !== STATIC_CACHE && key !== DYNAMIC_CACHE)
-                    .map((key) => caches.delete(key))
-            );
-        }).then(() => self.clients.claim())
+        caches.keys().then((keys) =>
+            Promise.all(
+                keys.filter((k) => k !== STATIC_CACHE && k !== DYNAMIC_CACHE)
+                    .map((k) => caches.delete(k))
+            )
+        ).then(() => self.clients.claim())
     );
 });
 
-// Fetch event - network first, fallback to cache
+// ── Fetch ─────────────────────────────────────────────────────────────────────
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
 
-    // Skip non-GET requests
-    if (request.method !== 'GET') {
+    if (request.method !== 'GET' || !url.protocol.startsWith('http')) return;
+
+    // Skip cross-origin (CDN etc) — let browser handle normally
+    if (url.origin !== self.location.origin) return;
+
+    // Offline API data — cache-first, update in background
+    if (OFFLINE_APIS.some((p) => url.pathname === p)) {
+        event.respondWith(
+            caches.open(DYNAMIC_CACHE).then((cache) =>
+                cache.match(request).then((cached) => {
+                    const networkFetch = fetch(request).then((res) => {
+                        cache.put(request, res.clone());
+                        return res;
+                    });
+                    return cached || networkFetch;
+                })
+            )
+        );
         return;
     }
 
-    // Skip chrome-extension and other non-http(s) requests
-    if (!url.protocol.startsWith('http')) {
-        return;
-    }
-
-    // For API requests - network first, fallback to cache
-    if (url.pathname.startsWith('/api/')) {
+    // HTML pages — network first, fall back to cache
+    if (request.headers.get('accept')?.includes('text/html')) {
         event.respondWith(
             fetch(request)
-                .then((response) => {
-                    const responseClone = response.clone();
-                    caches.open(DYNAMIC_CACHE).then((cache) => {
-                        cache.put(request, responseClone);
-                    });
-                    return response;
+                .then((res) => {
+                    caches.open(DYNAMIC_CACHE).then((c) => c.put(request, res.clone()));
+                    return res;
                 })
-                .catch(() => {
-                    return caches.match(request);
-                })
+                .catch(() => caches.match(request).then((r) => r || caches.match('/')))
         );
         return;
     }
 
-    // For HTML pages - network first, fallback to offline page
-    if (request.headers.get('accept').includes('text/html')) {
-        event.respondWith(
-            fetch(request)
-                .then((response) => {
-                    const responseClone = response.clone();
-                    caches.open(DYNAMIC_CACHE).then((cache) => {
-                        cache.put(request, responseClone);
-                    });
-                    return response;
-                })
-                .catch(() => {
-                    return caches.match('/offline') || caches.match('/');
-                })
-        );
-        return;
-    }
-
-    // For static assets (JS, CSS, fonts, images) - cache first
-    if (
-        url.pathname.endsWith('.js') ||
-        url.pathname.endsWith('.css') ||
-        url.pathname.includes('fonts.googleapis') ||
-        url.pathname.includes('gstatic.com') ||
-        url.pathname.includes('cdn.jsdelivr') ||
-        url.pathname.includes('cdn.tailwindcss')
-    ) {
-        event.respondWith(
-            caches.match(request).then((cached) => {
-                if (cached) {
-                    return cached;
-                }
-                return fetch(request).then((response) => {
-                    const responseClone = response.clone();
-                    caches.open(STATIC_CACHE).then((cache) => {
-                        cache.put(request, responseClone);
-                    });
-                    return response;
-                });
-            })
-        );
-        return;
-    }
-
-    // Default: network first
+    // Static assets — network first, cache fallback
     event.respondWith(
         fetch(request)
+            .then((res) => {
+                if (res.ok) caches.open(DYNAMIC_CACHE).then((c) => c.put(request, res.clone()));
+                return res;
+            })
             .catch(() => caches.match(request))
     );
 });
 
-// Background sync for offline transactions
+// ── Background Sync ───────────────────────────────────────────────────────────
 self.addEventListener('sync', (event) => {
     if (event.tag === 'sync-transactions') {
-        event.waitUntil(syncTransactions());
+        event.waitUntil(syncPendingTransactions());
     }
 });
 
-async function syncTransactions() {
-    const pendingTransactions = await getPendingTransactions();
-    for (const transaction of pendingTransactions) {
+async function syncPendingTransactions() {
+    const transactions = await getAllOfflineTx();
+    for (const tx of transactions) {
         try {
-            await fetch('/api/offline/transactions', {
+            const res = await fetch('/api/offline/transactions', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(transaction),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': tx.csrfToken || '',
+                },
+                body: JSON.stringify(tx),
             });
-            await markTransactionSynced(transaction.offlineId);
-        } catch (error) {
-            console.error('[SW] Failed to sync transaction:', error);
+            if (res.ok) {
+                await deleteOfflineTx(tx.offlineId);
+                const clients = await self.clients.matchAll();
+                clients.forEach((c) => c.postMessage({ type: 'SYNC_SUCCESS', offlineId: tx.offlineId }));
+            }
+        } catch (e) {
+            console.error('[SW] Sync failed:', tx.offlineId, e);
         }
     }
 }
 
-function getPendingTransactions() {
-    return new Promise((resolve) => {
-        const dbRequest = indexedDB.open('pos-offline', 1);
-        dbRequest.onsuccess = (event) => {
-            const db = event.target.result;
-            const transaction = db.transaction(['transactions'], 'readonly');
-            const store = transaction.objectStore('transactions');
-            const request = store.getAll();
-            request.onsuccess = () => resolve(request.result || []);
-        };
-        dbRequest.onupgradeneeded = (event) => {
-            const db = event.target.result;
+// ── IndexedDB helpers ─────────────────────────────────────────────────────────
+function openOfflineDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open('pos-offline', 2);
+        req.onupgradeneeded = (e) => {
+            const db = e.target.result;
             if (!db.objectStoreNames.contains('transactions')) {
                 db.createObjectStore('transactions', { keyPath: 'offlineId' });
             }
         };
+        req.onsuccess = (e) => resolve(e.target.result);
+        req.onerror = () => reject(req.error);
     });
 }
 
-function markTransactionSynced(offlineId) {
+async function getAllOfflineTx() {
+    const db = await openOfflineDB();
     return new Promise((resolve) => {
-        const dbRequest = indexedDB.open('pos-offline', 1);
-        dbRequest.onsuccess = (event) => {
-            const db = event.target.result;
-            const transaction = db.transaction(['transactions'], 'readwrite');
-            const store = transaction.objectStore('transactions');
-            store.delete(offlineId);
-            transaction.oncomplete = () => resolve();
-        };
+        const tx = db.transaction('transactions', 'readonly');
+        const req = tx.objectStore('transactions').getAll();
+        req.onsuccess = () => resolve(req.result || []);
     });
 }
 
-// Push notification handler (for future use)
+async function deleteOfflineTx(offlineId) {
+    const db = await openOfflineDB();
+    return new Promise((resolve) => {
+        const tx = db.transaction('transactions', 'readwrite');
+        tx.objectStore('transactions').delete(offlineId);
+        tx.oncomplete = resolve;
+    });
+}
+
 self.addEventListener('push', (event) => {
     if (event.data) {
         const data = event.data.json();
         self.registration.showNotification(data.title, {
             body: data.body,
             icon: '/pwa/icon-192.png',
-            badge: '/pwa/icon-192.png',
         });
     }
 });
-
-console.log('[SW] Service worker loaded');

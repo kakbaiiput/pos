@@ -5,6 +5,18 @@
     <main class="flex-1 flex flex-col bg-surface overflow-hidden" x-data="posCart()"
         @add-to-cart="addToCart($event.detail)">
 
+        <!-- Offline Banner -->
+        <div id="offlineBanner" class="hidden items-center justify-between gap-2 px-4 py-2 bg-amber-500 text-white text-xs font-bold z-50">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-base">wifi_off</span>
+                <span>Mode Offline — Transaksi tersimpan lokal, akan sync otomatis saat online kembali</span>
+            </div>
+            <span id="offlinePendingCount" class="bg-white text-amber-600 rounded-full px-2 py-0.5 hidden"></span>
+        </div>
+        <div id="onlineBanner" class="hidden items-center gap-2 px-4 py-2 bg-green-500 text-white text-xs font-bold z-50">
+            <span class="material-symbols-outlined text-base">wifi</span>
+            <span>Koneksi kembali — Menyinkronkan transaksi offline...</span>
+        </div>
 
         <!-- Header: Scan Bar + Actions -->
         <header
@@ -212,14 +224,14 @@
 
                 <!-- Bottom: Checkout Actions -->
                 <div class="p-5 bg-white border-t border-slate-200/50 space-y-3">
-                    <form action="/payment/checkout" method="POST">
+                    <form action="/payment/checkout" method="POST" id="checkoutForm" @submit.prevent="handleCheckout($event)">
                         @csrf
                         <input type="hidden" name="cart" x-model="JSON.stringify(cart)">
                         <input type="hidden" name="customer_id" id="customerId">
                         <button :disabled="cart.length === 0"
                             class="w-full py-4 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-headline font-extrabold text-base shadow-lg shadow-primary/20 hover:scale-[0.98] transition-transform active:opacity-90 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                            <span class="material-symbols-outlined text-lg">payments</span>
-                            <span>Process Checkout</span>
+                            <span class="material-symbols-outlined text-lg" x-text="isOffline ? 'save' : 'payments'"></span>
+                            <span x-text="isOffline ? 'Simpan Offline' : 'Process Checkout'"></span>
                         </button>
                     </form>
                     <button :disabled="cart.length === 0" @click="savePendingOrder()"
@@ -425,14 +437,14 @@
 
                 <!-- Checkout Button -->
                 <div class="p-4 bg-white border-t border-slate-200">
-                    <form action="/payment/checkout" method="POST">
+                    <form action="/payment/checkout" method="POST" @submit.prevent="handleCheckout($event)">
                         @csrf
                         <input type="hidden" name="cart" x-model="JSON.stringify(cart)">
-                        <input type="hidden" name="customer_id" id="customerId">
+                        <input type="hidden" name="customer_id" id="customerIdMobile">
                         <button :disabled="cart.length === 0"
                             class="w-full py-4 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-headline font-extrabold text-base shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                            <span class="material-symbols-outlined text-lg">payments</span>
-                            <span>Process Checkout</span>
+                            <span class="material-symbols-outlined text-lg" x-text="isOffline ? 'save' : 'payments'"></span>
+                            <span x-text="isOffline ? 'Simpan Offline' : 'Process Checkout'"></span>
                         </button>
                     </form>
                 </div>
@@ -683,6 +695,7 @@
                 showProductModal: false,
                 showCheckoutModal: false,
                 scanQuery: '',
+                isOffline: !navigator.onLine,
 
                 // Camera scanner
                 showCameraScanner: false,
@@ -1076,6 +1089,50 @@
                     }
                 },
 
+                async handleCheckout(event) {
+                    if (this.isOffline) {
+                        await this.saveOfflineTransaction();
+                    } else {
+                        event.target.submit();
+                    }
+                },
+
+                async saveOfflineTransaction() {
+                    if (this.cart.length === 0) return;
+                    const offlineId = 'OFF-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+                    const tx = {
+                        offlineId,
+                        cart: this.cart,
+                        store_id: {{ auth()->user()->store_id ?? 'null' }},
+                        user_id: {{ auth()->id() }},
+                        cashier_name: '{{ addslashes(auth()->user()->name) }}',
+                        customer_id: document.getElementById('customerId')?.value || null,
+                        payment_method: 'offline',
+                        total_amount: this.cart.reduce((s, i) => s + i.price * i.quantity, 0),
+                        amount_received: 0,
+                        change_amount: 0,
+                        invoice_id: offlineId,
+                        csrfToken: '{{ csrf_token() }}',
+                        created_at: new Date().toISOString(),
+                    };
+
+                    try {
+                        await posOfflineDB.saveTx(tx);
+                        this.clearCart();
+                        updateOfflinePendingCount();
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Transaksi Disimpan Offline',
+                            html: `<div class="text-sm">ID: <b>${offlineId}</b><br>Akan sync otomatis saat koneksi kembali.</div>`,
+                            confirmButtonColor: '#003f87',
+                            timer: 4000,
+                            timerProgressBar: true,
+                        });
+                    } catch (e) {
+                        Swal.fire({ icon: 'error', title: 'Gagal Simpan Offline', text: e.message });
+                    }
+                },
+
                 async savePendingOrder() {
                     if (this.cart.length === 0) return;
                     try {
@@ -1309,4 +1366,146 @@
             </div>
         </div>
     </div>
+
+@push('scripts')
+<script>
+// ── IndexedDB wrapper ─────────────────────────────────────────────────────────
+const posOfflineDB = (() => {
+    function open() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open('pos-offline', 2);
+            req.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('transactions')) {
+                    db.createObjectStore('transactions', { keyPath: 'offlineId' });
+                }
+            };
+            req.onsuccess = (e) => resolve(e.target.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+    return {
+        async saveTx(tx) {
+            const db = await open();
+            return new Promise((res, rej) => {
+                const t = db.transaction('transactions', 'readwrite');
+                t.objectStore('transactions').put(tx);
+                t.oncomplete = res;
+                t.onerror = () => rej(t.error);
+            });
+        },
+        async getAllTx() {
+            const db = await open();
+            return new Promise((res) => {
+                const t = db.transaction('transactions', 'readonly');
+                const req = t.objectStore('transactions').getAll();
+                req.onsuccess = () => res(req.result || []);
+            });
+        },
+        async deleteTx(offlineId) {
+            const db = await open();
+            return new Promise((res) => {
+                const t = db.transaction('transactions', 'readwrite');
+                t.objectStore('transactions').delete(offlineId);
+                t.oncomplete = res;
+            });
+        },
+        async countTx() {
+            const db = await open();
+            return new Promise((res) => {
+                const t = db.transaction('transactions', 'readonly');
+                const req = t.objectStore('transactions').count();
+                req.onsuccess = () => res(req.result);
+            });
+        },
+    };
+})();
+
+// ── Offline UI helpers ────────────────────────────────────────────────────────
+const offlineBanner = document.getElementById('offlineBanner');
+const onlineBanner  = document.getElementById('onlineBanner');
+const pendingCount  = document.getElementById('offlinePendingCount');
+
+async function updateOfflinePendingCount() {
+    const count = await posOfflineDB.countTx();
+    if (count > 0) {
+        pendingCount.textContent = count + ' pending';
+        pendingCount.classList.remove('hidden');
+    } else {
+        pendingCount.classList.add('hidden');
+    }
+}
+
+function showOfflineBanner() {
+    offlineBanner.classList.remove('hidden');
+    offlineBanner.classList.add('flex');
+    onlineBanner.classList.add('hidden');
+    onlineBanner.classList.remove('flex');
+    updateOfflinePendingCount();
+    // Update Alpine isOffline
+    const main = document.querySelector('[x-data]');
+    if (main && main._x_dataStack) main._x_dataStack[0].isOffline = true;
+}
+
+function showOnlineBanner() {
+    onlineBanner.classList.remove('hidden');
+    onlineBanner.classList.add('flex');
+    offlineBanner.classList.add('hidden');
+    offlineBanner.classList.remove('flex');
+    const main = document.querySelector('[x-data]');
+    if (main && main._x_dataStack) main._x_dataStack[0].isOffline = false;
+    // Try background sync
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.ready.then((reg) => {
+            if ('sync' in reg) reg.sync.register('sync-transactions');
+            else syncOfflineManually(); // fallback for browsers without background sync
+        });
+    } else {
+        syncOfflineManually();
+    }
+}
+
+// Manual sync fallback (Safari / browsers without Background Sync API)
+async function syncOfflineManually() {
+    const txList = await posOfflineDB.getAllTx();
+    if (txList.length === 0) { setTimeout(() => { onlineBanner.classList.add('hidden'); onlineBanner.classList.remove('flex'); }, 2000); return; }
+
+    let synced = 0;
+    for (const tx of txList) {
+        try {
+            const res = await fetch('/api/offline/transactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': tx.csrfToken || '' },
+                body: JSON.stringify(tx),
+            });
+            if (res.ok) { await posOfflineDB.deleteTx(tx.offlineId); synced++; }
+        } catch (e) { /* will retry next time */ }
+    }
+
+    if (synced > 0) {
+        onlineBanner.querySelector('span:last-child').textContent = `${synced} transaksi berhasil disinkronkan!`;
+    }
+    setTimeout(() => { onlineBanner.classList.add('hidden'); onlineBanner.classList.remove('flex'); }, 3000);
+    updateOfflinePendingCount();
+}
+
+// ── Event listeners ───────────────────────────────────────────────────────────
+window.addEventListener('online',  showOnlineBanner);
+window.addEventListener('offline', showOfflineBanner);
+
+// SW message (background sync success)
+navigator.serviceWorker?.addEventListener('message', async (event) => {
+    if (event.data?.type === 'SYNC_SUCCESS') {
+        await posOfflineDB.deleteTx(event.data.offlineId);
+        updateOfflinePendingCount();
+    }
+});
+
+// On page load
+document.addEventListener('DOMContentLoaded', () => {
+    if (!navigator.onLine) showOfflineBanner();
+    updateOfflinePendingCount();
+});
+</script>
+@endpush
 </x-layout>

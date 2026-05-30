@@ -14,24 +14,28 @@ class OfflineController extends Controller
 {
     public function getProducts(Request $request)
     {
-        $storeId = $request->header('X-Store-ID');
+        $storeId = $request->header('X-Store-ID') ?: auth()->user()->store_id;
 
-        $products = Product::with(['category', 'stocks' => function ($q) use ($storeId) {
-            if ($storeId) {
-                $q->where('store_id', $storeId);
-            }
+        $products = Product::with(['category', 'recipe.items', 'stocks' => function ($q) use ($storeId) {
+            if ($storeId) $q->where('store_id', $storeId);
         }])->get()->map(function ($p) {
             $stock = $p->stocks->first();
 
             return [
-                'id' => $p->id,
-                'name' => $p->name,
-                'sku' => $p->sku,
+                'id'            => $p->id,
+                'name'          => $p->name,
+                'sku'           => $p->sku,
+                'barcode'       => $p->barcode,
                 'selling_price' => $p->selling_price,
-                'category_id' => $p->category_id,
+                'promo_price'   => $p->promo_price,
+                'promo_start'   => $p->promo_start,
+                'promo_end'     => $p->promo_end,
+                'category_id'   => $p->category_id,
                 'category_name' => $p->category?->name,
-                'image' => $p->image,
-                'stock' => $stock ? $stock->quantity : 0,
+                'image'         => $p->image,
+                'stock'         => $stock ? $stock->quantity : 0,
+                'track_stock'   => (bool) $p->track_stock,
+                'has_recipe'    => $p->recipe && $p->recipe->items->isNotEmpty(),
             ];
         });
 
@@ -89,16 +93,25 @@ class OfflineController extends Controller
                     'price' => $item['price'],
                 ]);
 
-                // Deduct stock
-                $product = Product::find($item['id']);
+                // Deduct stock (same logic as PaymentController)
+                $product = Product::with('recipe.items')->find($item['id']);
                 if ($product && $storeId) {
-                    $stock = StockProduct::where('product_id', $product->id)
-                        ->where('store_id', $storeId)
-                        ->first();
+                    $qty = (int) $item['quantity'];
+                    $recipe = $product->recipe;
 
-                    if ($stock) {
-                        $stock->quantity = max(0, $stock->quantity - $item['quantity']);
-                        $stock->save();
+                    if ($recipe && $recipe->items->isNotEmpty()) {
+                        foreach ($recipe->items as $ri) {
+                            $raw = Product::find($ri->product_id);
+                            if ($raw) {
+                                $s = StockProduct::where('product_id', $raw->id)->where('store_id', $storeId)->first();
+                                if ($s) { $s->quantity = max(0, $s->quantity - ($ri->quantity * $qty)); $s->save(); }
+                            }
+                        }
+                    }
+
+                    if ($product->track_stock) {
+                        $s = StockProduct::where('product_id', $product->id)->where('store_id', $storeId)->first();
+                        if ($s) { $s->quantity = max(0, $s->quantity - $qty); $s->save(); }
                     }
                 }
             }
