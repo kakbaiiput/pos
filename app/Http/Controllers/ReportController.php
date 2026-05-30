@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Expense;
 use App\Models\History;
+use App\Models\Product;
 use App\Models\Store;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -125,6 +126,75 @@ class ReportController extends Controller
             'stores' => $stores,
             'branches' => $branches,
             'storeId' => $storeId,
+        ]);
+    }
+
+    public function products(Request $request)
+    {
+        $user = auth()->user();
+        $storeId = $request->store_id ?? $user->store_id;
+        $startDate = $request->start_date ? Carbon::parse($request->start_date)->startOfDay() : Carbon::now()->startOfMonth();
+        $endDate   = $request->end_date   ? Carbon::parse($request->end_date)->endOfDay()   : Carbon::now()->endOfDay();
+        $sortBy    = $request->sort_by ?? 'qty'; // qty | revenue | profit
+        $limit     = 20;
+
+        $query = DB::table('history_items')
+            ->join('histories', 'history_items.history_id', '=', 'histories.id')
+            ->join('products', 'history_items.product_id', '=', 'products.id')
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+            ->whereBetween('histories.created_at', [$startDate, $endDate])
+            ->where('histories.status', '!=', 'voided')
+            ->select([
+                'products.id',
+                'products.name',
+                'products.sku',
+                'products.image',
+                'categories.name as category_name',
+                DB::raw('SUM(history_items.quantity) as total_qty'),
+                DB::raw('SUM(history_items.quantity * history_items.price) as total_revenue'),
+                DB::raw('SUM(history_items.quantity * (history_items.price - products.cost_price)) as total_profit'),
+                DB::raw('COUNT(DISTINCT histories.id) as total_orders'),
+            ])
+            ->groupBy('products.id', 'products.name', 'products.sku', 'products.image', 'categories.name');
+
+        if (! $user->isSuperAdmin() || $storeId) {
+            $query->where('histories.store_id', $storeId);
+        }
+
+        $orderCol = match($sortBy) {
+            'revenue' => 'total_revenue',
+            'profit'  => 'total_profit',
+            default   => 'total_qty',
+        };
+
+        $topProducts = $query->orderByDesc($orderCol)->limit($limit)->get();
+
+        // Category breakdown
+        $categoryBreakdown = DB::table('history_items')
+            ->join('histories', 'history_items.history_id', '=', 'histories.id')
+            ->join('products', 'history_items.product_id', '=', 'products.id')
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+            ->whereBetween('histories.created_at', [$startDate, $endDate])
+            ->where('histories.status', '!=', 'voided')
+            ->when(! $user->isSuperAdmin() || $storeId, fn($q) => $q->where('histories.store_id', $storeId))
+            ->select([
+                DB::raw('COALESCE(categories.name, "Tanpa Kategori") as category'),
+                DB::raw('SUM(history_items.quantity) as total_qty'),
+                DB::raw('SUM(history_items.quantity * history_items.price) as total_revenue'),
+            ])
+            ->groupBy('category')
+            ->orderByDesc('total_revenue')
+            ->get();
+
+        return view('pages.reports.products', [
+            'title'             => 'Laporan Produk',
+            'topProducts'       => $topProducts,
+            'categoryBreakdown' => $categoryBreakdown,
+            'startDate'         => $startDate->format('Y-m-d'),
+            'endDate'           => $endDate->format('Y-m-d'),
+            'sortBy'            => $sortBy,
+            'stores'            => Store::all(),
+            'storeId'           => $storeId,
         ]);
     }
 }

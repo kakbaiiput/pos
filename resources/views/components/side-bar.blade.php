@@ -253,6 +253,11 @@ function toggleMobileSidebar() {
       <span class="material-symbols-outlined flex-shrink-0 transition-transform group-hover:scale-110" style="font-variation-settings: 'FILL' {{ request()->is('reports/pnl*') ? 1 : 0 }};">monitoring</span>
       <span class="sidebar-link-text font-bold">Laba Rugi (P&L)</span>
     </a>
+    <a href="/reports/products"
+      class="{{ request()->is('reports/products*') ? 'bg-gradient-to-r from-primary to-primary-container text-white shadow-lg shadow-primary/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800' }} flex items-center gap-3 px-4 py-3 rounded-2xl transition-all sidebar-link group">
+      <span class="material-symbols-outlined flex-shrink-0 transition-transform group-hover:scale-110" style="font-variation-settings: 'FILL' {{ request()->is('reports/products*') ? 1 : 0 }};">bar_chart</span>
+      <span class="sidebar-link-text font-bold">Laporan Produk</span>
+    </a>
     @endif
 
     {{-- Pengeluaran --}}

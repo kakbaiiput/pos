@@ -157,6 +157,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/expenses', [ReportController::class, 'storeExpense']);
     Route::delete('/expenses/{expense}', [ReportController::class, 'destroyExpense']);
     Route::get('/reports/pnl', [ReportController::class, 'pnl']);
+    Route::get('/reports/products', [ReportController::class, 'products']);
 
     // Promotions
     Route::get('/promotions', [PromotionController::class, 'index']);
